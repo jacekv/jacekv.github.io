@@ -470,3 +470,52 @@ And now you are the owner :) Congrats :)
 
 ### Learning:
 Usage of delegatecall is particularly risky and has been used as an attack vector on multiple historic hacks. With it, your contract is practically saying "here, -other contract- or -other library-, do whatever you want with my state". Delegates have complete access to your contract's state. The delegatecall function is a powerful feature, but a dangerous one, and must be used with extreme care.
+
+## Level 7: Force
+
+We have the following contract in the Force level:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract Force { /*
+                   MEOW ?
+         /\_/\   /
+    ____/ o o \
+    /~____  =ø= /
+    (______)__m_m)
+                   */ }
+```
+
+and out objective is to increase the balance.
+
+In a previous level we learned about fallback functions. If we call a contract where the function signature doesn't match any of the functions in the contract, the fallback function is called. 
+
+In this example there is no payable `fallback()` and no `receive()` function defined. So, there is no way to send Ether to the contract by using an EOA.
+
+Instead we are going to make use of the `selfdestruct()` function. The `selfdestruct()` function is used to destroy the contract and send its funds to a designated address.
+
+Here is the code to do that:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract Payer {
+    uint public balance = 0;
+
+    function destruct(address payable _beneficiary) external payable {
+        selfdestruct(_beneficiary);
+    }
+
+    receive() external payable {
+        balance += msg.value;
+    }
+}
+```
+
+Deploy the contract, send a small amount of Ether to the contract and call the `destruct()` function with the address of the Force contract. The balance of the Force contract should now be increased by the amount of Ether you sent to the Payer contract.
+
+### Learning:
+The `selfdestruct()` function is used to destroy the contract and send its funds to a designated address. It is a dangerous function and should be used with caution.
