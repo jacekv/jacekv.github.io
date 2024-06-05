@@ -519,3 +519,61 @@ Deploy the contract, send a small amount of Ether to the contract and call the `
 
 ### Learning:
 The `selfdestruct()` function is used to destroy the contract and send its funds to a designated address. It is a dangerous function and should be used with caution.
+
+## Level 8: Vault
+
+The Vault level has the following contract:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract Vault {
+    bool public locked;
+    bytes32 private password;
+
+    constructor(bytes32 _password) {
+        locked = true;
+        password = _password;
+    }
+
+    function unlock(bytes32 _password) public {
+        if (password == _password) {
+            locked = false;
+        }
+    }
+}
+```
+
+and our task is to unlock the vault.
+
+Let's make sure first that it is indeed locked. Type the following into your console:
+
+`await contract.locked()` and you should get `true`.
+
+The password is stored as a private variable in the contract. We can't access it directly, but we can try to guess it. We can use a brute force attack to try all possible combinations of the password. Let's ...
+
+Just joking - it's bytes32, so it's not possible to brute force it :D Who is going to pay all those gas fees?
+
+Instead, let's just read the storage of the contract :O READ STORAGE YOU SAY?
+
+Yes, read the storage :) Just because a variable is marked as private, it doesn't mean that it is not accessible. It is just a convention to mark it as private, which means for the compiler to not create getter and setter functions. The storage of a contract is public and can be read by anyone.
+
+Here is the code to read the storage:
+
+```bash
+curl <rpc endpoint> -X POST -H "Content-Type: application/json" \
+  --data '{"method":"eth_getStorageAt","params":["<contract address>", "<slot>", "latest"],"id":1,"jsonrpc":"2.0"}'
+```
+
+The slot is the position of the variable in the storage. The password is the second variable in the storage, so the slot is 1.
+
+Once you send the request, you will get a response, which contains the password.
+
+We simply copy the password and call the `unlock()` function with the password as a parameter. The vault is now unlocked.
+
+Time to submit ;)
+
+## Learning:
+
+Just because a variable is marked as private, it doesn't mean that it is not accessible. It is just a convention to mark it as private, which means for the compiler to not create getter and setter functions. The storage of a contract is public and can be read by anyone. Do not store any sensitive information in a contract :)
