@@ -2,7 +2,19 @@ I decided to do all the OpenZeppelin [Ethernaut](https://ethernaut.openzeppelin.
 
 If you want to do the same, I recommend that you try to solve the levels on your own first. If you are stuck, you can always look at the hints or the solutions.
 
-## Level 0: Intro
+# Table of Contents
+1. [Level 0: Intro](#level-0-intro)
+2. [Level 1: Fallback](#level-1-fallback)
+3. [Level 2: Fal1out](#level-2-fal1out)
+4. [Level 3: Coin Flip](#level-3-coin-flip)
+5. [Level 4: Telephone](#level-4-telephone)
+6. [Level 5: Token](#level-5-token)
+7. [Level 6: Delegation](#level-6-delegation)
+8. [Level 7: Force](#level-7-force)
+9. [Level 8: Vault](#level-8-vault)
+10. [Level 9: King](#level-9-king)
+
+## Level 0: Intro <a name="level-0-intro"></a>
 
 This level is the intro into Ethernaut and explains how to set up your wallet and how to use the browser console to interact with the contract.
 
@@ -24,7 +36,7 @@ Once the transaction is included into a block, we hit the submit button and tada
 ### Learning
 We learned how to interact with a contract using the `contract` variable, how to call methods and how to inspect a contract. We also learned that the password has been saved in a state variable which is declared as public. This causes the compiler to automatically create a getter function for the state variable and we can call it :) So, it is not a good idea to store sensitive information in a contract ;)
 
-## Level 1: Fallback
+## Level 1: Fallback  <a name="level-1-fallback"></a>
 
 The Fallback level is showing us the following code:
 
@@ -113,7 +125,7 @@ You should get a 0. Look at us ;) Time to submit.
 ### Learning
 We learned that Solidity has two types of fallback functions and how to use them. We also learned how to send Ether to a contract and how to withdraw it. There is also the owner contract used to restrict the usage of some methods. Yet, we were able to exploit it :) 
 
-## Level 2: Fal1out
+## Level 2: Fal1out  <a name="level-2-fal1out"></a>
 
 The Fal1out level is showing us the following code:
 
@@ -172,7 +184,7 @@ All you have to do: deploy an instance of the contract, send a transaction invok
 ### Learning:
 Be careful when naming your constructor. Even better: Do not use named constructor functions, but use the `contructor` keyword instead. In that case you will not make this mistake.
 
-## Level 3: Coin Flip
+## Level 3: Coin Flip <a name="level-3-coin-flip"></a>
 The next level is the coin flip level, where the goal is to guess the correct outcome of a coin flip and build up your winning streak. In order to pass this level you have to guess the correct outcome 10 times in a row 😮
 
 Let’s have a look into the contract:
@@ -263,7 +275,7 @@ If you want to check if you have won, you can see if you transaction contains th
 ### Learning:
 While writing contracts, do not forget to think about contracts interacting with your contract. This is a perfect example, where from an EOA perspective, it is very difficult to make up to 10 consecutive guesses. But that changes quickly if you start to use a contract in order to interact with the CoinFlip contract.
 
-## Level 4: Telephone
+## Level 4: Telephone <a name="level-4-telephone"></a>
 
 Time to take ownership of the next contract :)
 Let’s have a look at the contract in the Telephone level:
@@ -322,7 +334,7 @@ Deploy the contract with the address of the Telephone address into the network, 
 ### Learning:
 While writing contracts, do not forget to think about contracts interacting with your contract. This is a perfect example, where an EOA is not able to change the ownership of the contract, but by putting a proxy contract in between the Telephone contract and you, you are able to change the ownership :) 
 
-## Level 5: Token
+## Level 5: Token <a name="level-5-token"></a>
 
 Time to get some more tokens :)
 Let’s have a look at the contract first:
@@ -377,7 +389,7 @@ An easier alternative is to use OpenZeppelin's SafeMath library that automatical
 a = a.add(c);
 If there is an overflow, the code will revert.
 
-## Level 6: Delegation
+## Level 6: Delegation <a name="level-6-delegation></a>
 
 The goal of this level is for you to claim ownership of the instance you are given.
 Contract first:
@@ -471,7 +483,7 @@ And now you are the owner :) Congrats :)
 ### Learning:
 Usage of delegatecall is particularly risky and has been used as an attack vector on multiple historic hacks. With it, your contract is practically saying "here, -other contract- or -other library-, do whatever you want with my state". Delegates have complete access to your contract's state. The delegatecall function is a powerful feature, but a dangerous one, and must be used with extreme care.
 
-## Level 7: Force
+## Level 7: Force <a name="level-7-force"></a>
 
 We have the following contract in the Force level:
 
@@ -520,7 +532,7 @@ Deploy the contract, send a small amount of Ether to the contract and call the `
 ### Learning:
 The `selfdestruct()` function is used to destroy the contract and send its funds to a designated address. It is a dangerous function and should be used with caution.
 
-## Level 8: Vault
+## Level 8: Vault <a name="level-8-vault"></a>
 
 The Vault level has the following contract:
 
@@ -574,11 +586,11 @@ We simply copy the password and call the `unlock()` function with the password a
 
 Time to submit ;)
 
-## Learning:
+### Learning:
 
 Just because a variable is marked as private, it doesn't mean that it is not accessible. It is just a convention to mark it as private, which means for the compiler to not create getter and setter functions. The storage of a contract is public and can be read by anyone. Do not store any sensitive information in a contract :)
 
-## Level 9: King
+## Level 9: King <a name="level-9-king"></a>
 
 The King level has the following contract:
 
