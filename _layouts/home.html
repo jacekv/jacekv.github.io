@@ -1,16 +1,21 @@
 ---
 layout: default
 ---
+<head>
+</head>
+<body>
 
-{{ content }}
+    {{ content }}
 
-{% if site.posts.size > 0 %}
-<h2>Posts</h2>
-<ul>
-    {% for post in site.posts %}
-    <li>
-      <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
-    </li>  
-    {% endfor %}
-</ul>
-{% endif %}
+    {% if site.posts.size > 0 %}
+    <h2>Posts</h2>
+    <ul>
+        {% for post in site.posts %}
+        <li>
+        <a href="{{ post.url | relative_url }}">{{ post.title }}</a>
+        </li>  
+        {% endfor %}
+    </ul>
+    {% endif %}
+    {% include google-analytics.html %}
+</body>
