@@ -841,3 +841,110 @@ Deploy the attacker contract and call the `attack()` function with the address o
 ### Learning
 
 Do not trust other contracts to implement an interface as intended. Always assume that the other contract can be malicious and try to exploit your contract. 
+
+## Level 12: Privacy
+
+Let's have a look at the contract first:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract Privacy {
+    bool public locked = true;
+    uint256 public ID = block.timestamp;
+    uint8 private flattening = 10;
+    uint8 private denomination = 255;
+    uint16 private awkwardness = uint16(block.timestamp);
+    bytes32[3] private data;
+
+    constructor(bytes32[3] memory _data) {
+        data = _data;
+    }
+
+    function unlock(bytes16 _key) public {
+        require(_key == bytes16(data[2]));
+        locked = false;
+    }
+
+    /*
+    A bunch of super advanced solidity algorithms...
+
+      ,*'^`*.,*'^`*.,*'^`*.,*'^`*.,*'^`*.,*'^`
+      .,*'^`*.,*'^`*.,*'^`*.,*'^`*.,*'^`*.,*'^`*.,
+      *.,*'^`*.,*'^`*.,*'^`*.,*'^`*.,*'^`*.,*'^`*.,*'^         ,---/V\
+      `*.,*'^`*.,*'^`*.,*'^`*.,*'^`*.,*'^`*.,*'^`*.,*'^`*.    ~|__(o.o)
+      ^`*.,*'^`*.,*'^`*.,*'^`*.,*'^`*.,*'^`*.,*'^`*.,*'^`*.,*'  UU  UU
+    */
+}
+```
+
+Our goal is to unlock this contract. In order to do that we need to understand
+how the storage of smart contracts work.
+
+Let's have a look. We have 6 state variables which are stored in the contract's
+storage, `locked`, `ID`, `flattening`, `denomination`, `awkwardness` and `data`.
+
+Here an explanation from the [Solidity documentation](https://docs.soliditylang.org/en/latest/internals/layout_in_storage.html) on storage layout:
+
+```
+State variables of contracts are stored in storage in a compact way such that multiple values sometimes use the same storage slot. Except for dynamically-sized arrays and mappings (see below), data is stored contiguously item after item starting with the first state variable, which is stored in slot 0. For each variable, a size in bytes is determined according to its type. Multiple, contiguous items that need less than 32 bytes are packed into a single storage slot if possible, according to the following rules:
+
+* The first item in a storage slot is stored lower-order aligned.
+* Value types use only as many bytes as are necessary to store them.
+* If a value type does not fit the remaining part of a storage slot, it is stored in the next storage slot.
+* Structs and array data always start a new slot and their items are packed tightly according to these rules.
+* Items following struct or array data always start a new storage slot.
+```
+
+The first state variable is `locked`. It is a boolean and uses 1 byte. The second
+state variable is `ID`. It is a uint256 and uses 32 bytes.  Since `ID` requires
+32 bytes, it will get an entire storage slot for itself, slot 1, which also
+means, that `locked` will be in slot 0.
+
+Next we have `flattening`, `denomination` and `awkwardness`. The first two of type
+`uint8` and the last one of type `uint16`. `uint8` means that the value needs
+8 bits or 1 byte. `uint16` means that the value needs 16 bits or 2 bytes. Since
+`uint8` and `uint16` are smaller than 32 bytes, they will be packed into the
+same storage slot. The first one will be stored in the lower-order bits then
+move towards the higher-order bits of the second storage slot.
+
+The last state variable and important one is `data`. It is an array of 3 bytes32.
+The value at the last index is used to unlock the contract. Since `data` is a
+static array of 3 bytes32, each value is stored in its own storage slot, one after
+the other. That is the important part for us. This is not a dynamic storage,
+where the values are stored in a different location, but they all follow each
+other in the storage.
+
+That means, that `data[2]`, which holds for us the important data, is stored in
+slot 5. We can read the storage of the contract and get the value of `data[2]`.
+
+Here the code to read the storage for the deployed contract at storage slot 5:
+
+```bash
+curl -X POST --data '{"jsonrpc":"2.0", "method": "eth_getStorageAt", "params": ["<contract address>", "0x5", "latest"], "id": 1}' <rpc endpoint>
+```
+The result is:
+```
+{"jsonrpc":"2.0","id":1,"result":"<data>"}
+```
+Nice, we have the data :) Now let's see if we can use the data to `unlock` our
+contract. We see that we are required to provide a `bytes16` value but we got
+a `bytes32` value. Since we have here a bytes32 value, the following rule
+applies during a conversion to a smaller type:
+
+```Fixed-size bytes types behave differently during conversions. They can be thought of as sequences of individual bytes and converting to a smaller type will cut off the sequence:``` [docs](https://docs.soliditylang.org/en/v0.8.16/types.html#explicit-conversions)
+
+That means, we take the first 16 bytes of the data and use it to unlock the contract.
+
+```
+await contract.unlock("0x16bytes")
+await contract.locked()
+```
+and tada, we unlocked the contract :)
+
+### Learning
+
+Taken from the level itself: 
+
+> Nothing in the ethereum blockchain is private. The keyword private is merely an artificial construct of the Solidity language. Web3's getStorageAt(...) can be used to read anything from storage. It can be tricky to read what you want though, since several optimization rules and techniques are used to compact the storage as much as possible.
