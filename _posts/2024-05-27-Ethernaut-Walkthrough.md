@@ -13,6 +13,9 @@ If you want to do the same, I recommend that you try to solve the levels on your
 8. [Level 7: Force](#level-7-force)
 9. [Level 8: Vault](#level-8-vault)
 10. [Level 9: King](#level-9-king)
+11. [Level 10: Re-entrancy](#level-10-re-entrancy)
+12. [Level 11: Elevator](#level-11-elevator)
+13. [Level 12: Privacy](#level-12-privacy)
 
 ## Level 0: Intro <a name="level-0-intro"></a>
 
