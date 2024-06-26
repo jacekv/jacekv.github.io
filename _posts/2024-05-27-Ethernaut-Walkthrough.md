@@ -16,6 +16,7 @@ If you want to do the same, I recommend that you try to solve the levels on your
 11. [Level 10: Re-entrancy](#level-10-re-entrancy)
 12. [Level 11: Elevator](#level-11-elevator)
 13. [Level 12: Privacy](#level-12-privacy)
+14. [Level 13: Gatekeeper One](#level-13-gatekeeper-one)
 
 ## Level 0: Intro <a name="level-0-intro"></a>
 
@@ -952,7 +953,7 @@ Taken from the level itself:
 
 > Nothing in the ethereum blockchain is private. The keyword private is merely an artificial construct of the Solidity language. Web3's getStorageAt(...) can be used to read anything from storage. It can be tricky to read what you want though, since several optimization rules and techniques are used to compact the storage as much as possible.
 
-## Level 13: Gatekeeper One
+## Level 13: Gatekeeper One <a name="level-13-gatekeeper-one"></a>
 
 Let's have a look at the contract first:
 
