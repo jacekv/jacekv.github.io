@@ -392,7 +392,7 @@ An easier alternative is to use OpenZeppelin's SafeMath library that automatical
 a = a.add(c);
 If there is an overflow, the code will revert.
 
-## Level 6: Delegation <a name="level-6-delegation></a>
+## Level 6: Delegation <a name="level-6-delegation"></a>
 
 The goal of this level is for you to claim ownership of the instance you are given.
 Contract first:
@@ -951,3 +951,107 @@ and tada, we unlocked the contract :)
 Taken from the level itself: 
 
 > Nothing in the ethereum blockchain is private. The keyword private is merely an artificial construct of the Solidity language. Web3's getStorageAt(...) can be used to read anything from storage. It can be tricky to read what you want though, since several optimization rules and techniques are used to compact the storage as much as possible.
+
+## Level 13: Gatekeeper One
+
+Let's have a look at the contract first:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract GatekeeperOne {
+    address public entrant;
+
+    modifier gateOne() {
+        require(msg.sender != tx.origin);
+        _;
+    }
+
+    modifier gateTwo() {
+        require(gasleft() % 8191 == 0);
+        _;
+    }
+
+    modifier gateThree(bytes8 _gateKey) {
+        require(uint32(uint64(_gateKey)) == uint16(uint64(_gateKey)), "GatekeeperOne: invalid gateThree part one");
+        require(uint32(uint64(_gateKey)) != uint64(_gateKey), "GatekeeperOne: invalid gateThree part two");
+        require(uint32(uint64(_gateKey)) == uint16(uint160(tx.origin)), "GatekeeperOne: invalid gateThree part three");
+        _;
+    }
+
+    function enter(bytes8 _gateKey) public gateOne gateTwo gateThree(_gateKey) returns (bool) {
+        entrant = tx.origin;
+        return true;
+    }
+}
+```
+We have to pass the following tests:
+
+```
+require(msg.sender != tx.origin);
+require(gasleft() % 8191 == 0);
+require(uint32(uint64(_gateKey)) == uint16(uint64(_gateKey))
+require(uint32(uint64(_gateKey)) != uint64(_gateKey)
+require(uint32(uint64(_gateKey)) == uint16(uint160(tx.origin))
+```
+
+Let's start with the first one. We need a proxy contract in order to pass the first gate. The proxy contract is going to call the `enter()` function of the GatekeeperOne contract. The `msg.sender` of the proxy contract is the contract itself and the `tx.origin` is the original sender of the transaction, which is the player. That means, that the `msg.sender` is not equal to the `tx.origin` and we pass the first gate.
+
+The second one is a bit tricky, since it tests at that point that the gas left is divisible by 8191. We could try to calculate the gas used for the transaction and then calculate the gas left. But that is a bit tricky and error prone, since we would need to get the right compiler version and optimization flags. An alternative is to brute force the gas left. We can send a transaction with a certain amount of gas and see if we pass the gate. If not, we try with a different amount of gas. We can do that in a loop until we find the correct amount of gas. The loop has a range of 8191, since the gas left is divisible by 8191. Once we found the correct amount of gas, we pass the second gate.
+
+Before we get into the third gate, let's check the docs in regards converting between types in Solidity: [docs](https://docs.soliditylang.org/en/v0.8.16/types.html#explicit-conversions)
+
+```
+If an integer is explicitly converted to a smaller type, higher-order bits are cut off
+```
+
+With that knowledge, let's start with the first require statement. The left hand side of the statement converts the `_gateKey` to
+4 bytes, cutting of the high-order 4 bytes. So we get `0xXXXXXXXX`. The right hand side of the statement converts the `_gateKey`
+to 2 bytes, cutting of the high-order 6 bytes. So we get `0XXXXX`. Since we test for equality, the statement looks as follows:
+`require(0xXXXXXXXX == 0x0000XXXX)`. Which means, that the last 4 bytes of our `_gateKey` need to be something like `0x...0000XXXX`.
+
+Neat, time to check the second require statement. The left hand side of the statement converts the `_gateKey` to 4 bytes, cutting
+of the high-order 4 bytes. We get `0xXXXXXXXX`. The right side converts just from bytes8 to uint64, which is still 8 bytes, making
+it `0xXXXXXXXXXXXXXXXX`. The test for inequality looks like this: `0x00000000XXXXXXXX != 0xXXXXXXXXXXXXXXXX`. Since we know from the first require statement, that the `_gateKey` has to be `ß`, we get the following test:
+`0x000000000000XXXX != 0xXXXXXXXX0000XXXX`.
+
+Since the left side of the statement looks that way due to converts, and the right side is the parameter provided into the function,
+we learn, that we have to provide a bytes8 data in the form `0xXXXXXXXX0000XXXX`, where `X` could be any hexadecimal number.
+
+Time for the last require statement :)
+
+The left hand side of the require statement, converts the `_gateKey` into 4 bytes, cutting of the 4 high-order bytes. The right hand side of the statement, takes the `tx.origin` address and converts it into 2 bytes, cutting of the 6 high-order bytes.
+The test for equality looks like this then: `0xXXXXXXXX == 0x0000XXXX.`
+
+That works pretty well with the format we got after the second require statement, which was `0xXXXXXXXX0000XXXX`. The additional information we learn is, that we need to use the `tx.origin` as our `_gateKey` and set bytes 2 and 3, counting from low-order up, to zero.
+
+
+Time to craft our contract, don't you think?
+
+```solidity
+interface GatekeeperOne {
+    function enter(bytes8 _gateKey) external returns (bool);
+}
+
+contract GateCracker {
+    function attack(address _contract) public {
+        GatekeeperOne gko = GatekeeperOne(_contract);
+        bytes8 key = bytes8(uint64(uint160(address(tx.origin)))) & 0xFFFFFFFF0000FFFF;
+        for (uint i = 0; i < 8191; i++) {
+            (bool success, ) = _contract.call{gas: 800000 + i}(abi.encodeWithSignature("enter(bytes8)", key));
+            if (success) {
+                break;
+            }
+        }
+        
+    }
+}
+```
+
+Deploy and call the `attack()` function with the address of the GatekeeperOne contract. The contract is going to call the `enter()` function of the GatekeeperOne contract with the correct `_gateKey` and we pass all gates.
+
+### Learning
+
+Not sure to be honest :D It takes time, but still can be cracked, and there are multiple ways to
+do it. The brute force approach is one of them, but it is not the most efficient one.
