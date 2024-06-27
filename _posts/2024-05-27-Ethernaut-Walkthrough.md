@@ -18,6 +18,7 @@ If you want to do the same, I recommend that you try to solve the levels on your
 13. [Level 12: Privacy](#level-12-privacy)
 14. [Level 13: Gatekeeper One](#level-13-gatekeeper-one)
 15. [Level 14: Gatekeeper Two](#level-14-gatekeeper-two)
+16. [Level 15: Naught Coin](#level-15-naught-coin)
 
 ## Level 0: Intro <a name="level-0-intro"></a>
 
@@ -1140,3 +1141,91 @@ Submit and you are done :)
 
 ### Learning
 Nothing is safe from us :)
+
+## Level 15: Naught Coin <a name="level-15-naught-coin"></a>
+
+As always, let's have a look at the contract first:
+
+```solidity
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "openzeppelin-contracts-08/token/ERC20/ERC20.sol";
+
+contract NaughtCoin is ERC20 {
+    // string public constant name = 'NaughtCoin';
+    // string public constant symbol = '0x0';
+    // uint public constant decimals = 18;
+    uint256 public timeLock = block.timestamp + 10 * 365 days;
+    uint256 public INITIAL_SUPPLY;
+    address public player;
+
+    constructor(address _player) ERC20("NaughtCoin", "0x0") {
+        player = _player;
+        INITIAL_SUPPLY = 1000000 * (10 ** uint256(decimals()));
+        // _totalSupply = INITIAL_SUPPLY;
+        // _balances[player] = INITIAL_SUPPLY;
+        _mint(player, INITIAL_SUPPLY);
+        emit Transfer(address(0), player, INITIAL_SUPPLY);
+    }
+
+    function transfer(address _to, uint256 _value) public override lockTokens returns (bool) {
+        super.transfer(_to, _value);
+    }
+
+    // Prevent the initial owner from transferring tokens until the timelock has passed
+    modifier lockTokens() {
+        if (msg.sender == player) {
+            require(block.timestamp > timeLock);
+            _;
+        } else {
+            _;
+        }
+    }
+}
+```
+
+We as a player own some tokens but they are locked :/ for 10 years. We need to find a way to unlock them
+and dump those on the market...
+
+The contract inherits from the ERC20 contract. We see that the coder wrote their
+own `transfer` function and added a modifier to it, which checks whether the
+`msg.sender` is the player and if the current block timestamp is greater than
+the `timeLock`. If that is the case, the transfer is allowed. If not, the transfer
+is not allowed.
+
+See you in 10 years :)
+
+Nah, jokes aside. Let's get our tokens unlocked in the next 2 minutes (if the block time
+allows it :D).
+
+The coder inherits from ERC20 but forgets that the `transferFrom` transaction exists.
+The `transferFrom` transaction allows us to transfer tokens from another address to
+another address. The `transferFrom` transaction is not protected by the `lockTokens`
+modifier and we can use it to transfer the tokens from the player to another address.
+It also requires an approval from the player, which we can get by calling the `approve`
+function of the ERC20 contract.
+
+Here is the code to unlock the tokens - you can run it in the browser console:
+
+```javascript
+await contract.balanceOf(player).then(v => v.toString())
+await contract.approve(player, '1000000000000000000000000')
+await contract.allowance(player, player).then(v => v.toString()) // wait till this is > 0
+// once allowance > 0
+await contract.transferFrom(player, "some address", '1000000000000000000000000')
+```
+
+and you are done :)
+
+You could also use a different address during the `approve` call and then transfer the tokens
+to that address. But I was to lazy to switch accounts in MetaMask and find some work around
+for the instance address, bla bla bla.
+
+That was easier :)
+
+### Learning
+
+Always check the functions of the contract and the contracts you are inheriting from.
+If the coder forgets to protect a function, you can use it to your advantage.
