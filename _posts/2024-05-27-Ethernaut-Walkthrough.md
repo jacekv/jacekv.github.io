@@ -20,6 +20,7 @@ If you want to do the same, I recommend that you try to solve the levels on your
 15. [Level 14: Gatekeeper Two](#level-14-gatekeeper-two)
 16. [Level 15: Naught Coin](#level-15-naught-coin)
 17. [Level 16: Preservation](#level-16-preservation)
+18. [Level 17: Recovery](#level-17-recovery)
 
 ## Level 0: Intro <a name="level-0-intro"></a>
 
@@ -1319,3 +1320,98 @@ and you are done :)
 ### Learning
 
 Delegatecall is a powerful tool, but it can also be dangerous. Always make sure that the storage of the contract you are calling is correctly defined.
+
+## Level 17: Recovery <a name="level-17-recovery"></a>
+
+Let's have a look at the contract first:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract Recovery {
+    //generate tokens
+    function generateToken(string memory _name, uint256 _initialSupply) public {
+        new SimpleToken(_name, msg.sender, _initialSupply);
+    }
+}
+
+contract SimpleToken {
+    string public name;
+    mapping(address => uint256) public balances;
+
+    // constructor
+    constructor(string memory _name, address _creator, uint256 _initialSupply) {
+        name = _name;
+        balances[_creator] = _initialSupply;
+    }
+
+    // collect ether in return for tokens
+    receive() external payable {
+        balances[msg.sender] = msg.value * 10;
+    }
+
+    // allow transfers of tokens
+    function transfer(address _to, uint256 _amount) public {
+        require(balances[msg.sender] >= _amount);
+        balances[msg.sender] = balances[msg.sender] - _amount;
+        balances[_to] = _amount;
+    }
+
+    // clean up after ourselves
+    function destroy(address payable _to) public {
+        selfdestruct(_to);
+    }
+}
+```
+
+We have a factory contract, which deploys `SimpleToken` contracts :) Nice, isn't it?
+
+According to the description of the level, someone wrote the contracts, deployed it,
+generated a token contract, send `0.001` Eth to the `SimpleToken` contract, and
+forgot the address - dang it.
+
+Shit happens, but good that there are indexers :)
+
+Let's request a new instance and put the new instance address into an explorer.
+Since those levels can be played on different networks, you have to pick the right one :)
+
+I am doing it on Holesky, so `holesky.etherscan.io` it is.
+
+After putting the instance address into the explorer, we see the contract has no
+transactions. Let's switch to the `Internal Transactions` tab and see what is going
+on there. We can see that there had been 3 internal transactions, 2 of them
+created a contract.
+
+If we inspect those newly created contracts, we can see that one of those is our
+contract with the instance address, and a second one. Go to the second contract
+and check the balance. There we go, the second token contract has a balance of
+`0.001` Eth.
+
+Time for recovery: :helicoper flying:
+
+We see that the contract has a `destory` function, which is not protected, calling
+the `selfdestruct` command. The `selfdestruct` command takes an address to where
+to send a remaining balance of the contract to. We can call the `destroy` function
+and provide our address as parameter. The remaining balance of the contract is going
+to be sent to our address.
+
+Copy the `SimpleToken` contract code to Remix, select `Injected Provider`, copy
+the address of the contract and load the contract using the `At Address` button.
+
+Now you are able to call the `destroy` function and provide your address as parameter.
+
+Congratulations, you got `0.001` Eth :)
+
+### Learning
+
+My learning: No secrets in blockchain. Even you can't find the address, you can use an explorer
+to find transactions and internal transactions. And always check the contract code, you never know
+what you can find there.
+
+Learning from the level:
+
+> Contract addresses are deterministic and are calculated by keccak256(address, nonce) where the address is the address of the contract (or ethereum address that created the transaction) and nonce is the number of contracts the spawning contract has created (or the transaction nonce, for regular transactions).
+
+>Because of this, one can send ether to a pre-determined address (which has no private key) and later create a contract at that address which recovers the ether. This is a non-intuitive and somewhat secretive way to (dangerously) store ether without holding a private key.
+
