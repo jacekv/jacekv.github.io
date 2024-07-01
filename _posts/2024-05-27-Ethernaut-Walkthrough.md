@@ -21,6 +21,7 @@ If you want to do the same, I recommend that you try to solve the levels on your
 16. [Level 15: Naught Coin](#level-15-naught-coin)
 17. [Level 16: Preservation](#level-16-preservation)
 18. [Level 17: Recovery](#level-17-recovery)
+19. [Level 18: MagicNumber](#level-18-magic-number)
 
 ## Level 0: Intro <a name="level-0-intro"></a>
 
@@ -1415,3 +1416,87 @@ Learning from the level:
 
 >Because of this, one can send ether to a pre-determined address (which has no private key) and later create a contract at that address which recovers the ether. This is a non-intuitive and somewhat secretive way to (dangerously) store ether without holding a private key.
 
+## Level 18: Magic Number  <a name="level-18-magic-number"></a>
+
+Let's have a look at this interesting level :)
+
+We have to deploy a contract which will be called by Ethernaut and it has to
+return the magic number - the meaning of life - 42. Easy, right?
+
+There is a catch - the contract code has to be very tiny, no more than 10 opcodes.
+
+For this we need to know how Smart Contracts are deployed.
+
+Whenever you write a Smart Contract and use the compiler into bytecode, the code
+consists of two parts: the initialization code and the runtime code.
+
+The initialization code is the code which is executed when you deploy a contract.
+It copies the runtime code at a deterministic address and runs the code within
+the `constructor` function.
+
+Once the deployment code has been deployed, the runtime code is located at a 
+address and can be called anytime.
+
+What that means for us is, that we have to write the deployment code and runtime
+code.
+
+Let's start with the runtime code. We need to return the magic number 42. The
+opcode for returning a value is `PUSH1 0x2a` and `RETURN`. The `0x2a` is the
+hexadecimal representation of the number 42.
+
+```solidity
+PUSH1 0x2A PUSH1 0x00 MSTORE // store 42 in memory at position 0
+PUSH1 0x20 PUSH1 0x00 RETURN // return 32 bytes from memory at position 0
+```
+
+This translates to the following bytecode:
+
+```
+0x602a60005260206000f3
+```
+
+where 0x60 is `PUSH1`, `0x52` is `MSTORE`, and `0xf3` is `RETURN`.
+
+Now time for our deployment code.
+
+```solidity
+PUSH1 0x0A      // 10 bytes is the length of the contract to be copied - 2 bytes
+PUSH1 0x0C      // starting byte (at byte 16) of the contract, because it comes after this code - 2 bytes
+PUSH1 0x0       // Offset in memory - 2 bytes
+CODECOPY        // Put the contract below into memory - 1 byte
+PUSH1 0x0A      // length of the contract below that's now stored in memory - 2 bytes
+PUSH1 0x0       // Offset in memory of the contract below - 2 bytes 
+RETURN          // Returning the contract - 1 byte
+```
+
+This translates to the following bytecode:
+
+```solidity
+0x600A600C600039600A6000F3
+```
+
+Let's combine both of them in the following manner:
+
+```
+// deployer code + runtime code
+0x600A600C600039600A6000F3 + 0x602a60005260206000f3
+0x600A600C600039600A6000F3602a60005260206000f3
+```
+
+Deploy the contract using the following code from the Ethernaut console:
+
+```javascript
+await web3.eth.sendTransaction({from: player, data: '600A600C600039600A6000F3602a60005260206000f3'})
+```
+
+get the contract address and set it for the level.
+
+```javascript
+await contract.setSolver("contract code")
+```
+
+and you are done :)
+
+### Learning
+
+You do not need always Solidity ;)
