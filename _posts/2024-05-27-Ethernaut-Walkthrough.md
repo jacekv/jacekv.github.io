@@ -24,7 +24,9 @@ If you want to do the same, I recommend that you try to solve the levels on your
 19. [Level 18: MagicNumber](#level-18-magic-number)
 20. [Level 19: Alien Codex](#level-19-alien-codex)
 21. [Level 20: Denial](#level-20-denial)
-22. [Level 21: Force](#level-21-force)
+22. [Level 21: Shop](#level-21-shop)
+23. [Level 22: Dex](#level-22-dex)
+
 
 
 ## Level 0: Intro <a name="level-0-intro"></a>
@@ -1824,3 +1826,184 @@ For the love of christ - do not trust any contract. The shop calls the
 `price` function of the buyer contract twice and trusts the return value.
 There is nothing which prevents the `Buyer` contract to change its data
 between calls.
+
+## Dex <a name="dex"></a>
+
+Let's have a look at the contract first:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "openzeppelin-contracts-08/token/ERC20/IERC20.sol";
+import "openzeppelin-contracts-08/token/ERC20/ERC20.sol";
+import "openzeppelin-contracts-08/access/Ownable.sol";
+
+contract Dex is Ownable {
+    address public token1;
+    address public token2;
+
+    constructor() {}
+
+    function setTokens(address _token1, address _token2) public onlyOwner {
+        token1 = _token1;
+        token2 = _token2;
+    }
+
+    function addLiquidity(address token_address, uint256 amount) public onlyOwner {
+        IERC20(token_address).transferFrom(msg.sender, address(this), amount);
+    }
+
+    function swap(address from, address to, uint256 amount) public {
+        require((from == token1 && to == token2) || (from == token2 && to == token1), "Invalid tokens");
+        require(IERC20(from).balanceOf(msg.sender) >= amount, "Not enough to swap");
+        uint256 swapAmount = getSwapPrice(from, to, amount);
+        IERC20(from).transferFrom(msg.sender, address(this), amount);
+        IERC20(to).approve(address(this), swapAmount);
+        IERC20(to).transferFrom(address(this), msg.sender, swapAmount);
+    }
+
+    function getSwapPrice(address from, address to, uint256 amount) public view returns (uint256) {
+        return ((amount * IERC20(to).balanceOf(address(this))) / IERC20(from).balanceOf(address(this)));
+    }
+
+    function approve(address spender, uint256 amount) public {
+        SwappableToken(token1).approve(msg.sender, spender, amount);
+        SwappableToken(token2).approve(msg.sender, spender, amount);
+    }
+
+    function balanceOf(address token, address account) public view returns (uint256) {
+        return IERC20(token).balanceOf(account);
+    }
+}
+
+contract SwappableToken is ERC20 {
+    address private _dex;
+
+    constructor(address dexInstance, string memory name, string memory symbol, uint256 initialSupply)
+        ERC20(name, symbol)
+    {
+        _mint(msg.sender, initialSupply);
+        _dex = dexInstance;
+    }
+
+    function approve(address owner, address spender, uint256 amount) public {
+        require(owner != _dex, "InvalidApprover");
+        super._approve(owner, spender, amount);
+    }
+}
+```
+
+We have a Dex, where the Dex contract has 100 tokens of each token. We, as the
+player have 10 tokens of each token. Our goal to reduce either one of the tokens
+of the DEX to 0.
+
+How does the Dex contract calculate the swap price? The Dex contract calculates
+the swap price by multiplying the amount of the token to be swapped with the
+balance of the token to be received and divides it by the balance of the token
+to be swapped. You can see that in the `getSwapPrice` function.
+
+You can see in the `getSwapPrice` function, that division is used. The problem
+with division is in Solidity is that it rounds towards [zero](https://docs.soliditylang.org/en/latest/types.html#division).
+
+Let's just play a bit with the `getSwapPrice` calculation on paper:
+
+Here is our initial state:
+
+```
+     player     |      DEX
+token1 - token2 | token1 - token2
+----------------------------------
+  10      10    |   100     100
+```
+
+Let's say we want to swap 10 tokens of token1 to token2. The calculation
+gives us the following:
+
+```
+     player     |      DEX
+token1 - token2 | token1 - token2
+----------------------------------
+  10      10    |   100     100
+   0      20    |   110     90
+```
+
+Now let's swap back 20 tokens of token2 to token1:
+
+```
+     player     |      DEX
+token1 - token2 | token1 - token2
+----------------------------------
+  10      10    |   100     100
+   0      20    |   110     90
+  24       0    |    86     110
+```
+
+Let's do it again by swapping 24 tokens of token1 to token2:
+
+```
+     player     |      DEX
+token1 - token2 | token1 - token2
+----------------------------------
+  10      10    |   100     100
+   0      20    |   110      90
+  24       0    |    86     110
+   0      30    |   110      80
+```
+We can see that our stake is raising with each swap and that the stake of the 
+Dex is decreasing. We can continue this process until the Dex has no tokens left.
+
+```
+     player     |      DEX
+token1 - token2 | token1 - token2
+----------------------------------
+  10      10    |   100     100
+   0      20    |   110      90
+  24       0    |    86     110
+   0      30    |   110      80
+  41       0    |    69     110
+   0      65    |   110      45
+```
+
+We now own 65 tokens of token2 which is more than enough to drain the Dex of
+token1 tokens. Let's see the calculation:
+
+```
+65 * 110 / 45 = 158
+```
+The Dex does not have 158 tokens of token1. Let's see how many tokens of token1
+we need to actually swap in order to drain the Dex of tokens1.
+
+```
+110 = X * 110 / 45 => X = 45
+```
+
+That means we just need to swap 45 tokens of token1 in order to drain the Dex.
+
+Let's do it :)
+Run just the following commands in the terminal until the Dex has no tokens left:
+
+```javascript
+await contract.swap(await contract.token1(), await contract.token2(), 10)
+await contract.swap(await contract.token2(), await contract.token1(), 20)
+... and so on
+```
+And you are done :)
+
+### Learning
+
+Division in Solidity rounds towards zero. Always be aware of that when you are
+doing calculations with division.
+
+Learning from the level itself:
+
+>The integer math portion aside, getting prices or any sort of data from any single source is a massive attack vector in smart contracts.
+>
+>You can clearly see from this example, that someone with a lot of capital could manipulate the price in one fell swoop, and cause any applications relying on it to use the wrong price.
+>
+>The exchange itself is decentralized, but the price of the asset is centralized, since it comes from 1 dex. However, if we were to consider tokens that represent actual assets rather than fictitious ones, most of them would have exchange pairs in several dexes and networks. This would decrease the effect on the asset's price in case a specific dex is targeted by an attack like this.
+>
+>Oracles are used to get data into and out of smart contracts.
+>
+>Chainlink Data Feeds are a secure, reliable, way to get decentralized data into your smart contracts. They have a vast library of many different sources, and also offer secure randomness, ability to make any API call, modular oracle network creation, upkeep, actions, and maintainance, and unlimited customization.
+
