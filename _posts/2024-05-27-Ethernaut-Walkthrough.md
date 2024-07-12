@@ -29,6 +29,7 @@ If you want to do the same, I recommend that you try to solve the levels on your
 24. [Level 22: Dex 2](#level-23-dex-2)
 25. [Level 24: Puzzle Wallet](#level-24-puzzle-wallet)
 26. [Level 25: Motorbike](#level-25-motorbike)
+27. [Level 26: DoubleEntryPoint](#level-26-doubleentrypoint)
 
 
 
@@ -2650,3 +2651,195 @@ Here the transaction where we exploited it: [Exploit Success](https://holesky.et
 
 Do not leave your logic contract uninitialized. Always make sure that the
 contract is properly initialized.
+
+## Level 26: DoubleEntryPoint <a name="level-26-double-entry-point">
+
+Let's have a look at the contracts first:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "openzeppelin-contracts-08/access/Ownable.sol";
+import "openzeppelin-contracts-08/token/ERC20/ERC20.sol";
+
+interface DelegateERC20 {
+    function delegateTransfer(address to, uint256 value, address origSender) external returns (bool);
+}
+
+interface IDetectionBot {
+    function handleTransaction(address user, bytes calldata msgData) external;
+}
+
+interface IForta {
+    function setDetectionBot(address detectionBotAddress) external;
+    function notify(address user, bytes calldata msgData) external;
+    function raiseAlert(address user) external;
+}
+
+contract Forta is IForta {
+    mapping(address => IDetectionBot) public usersDetectionBots;
+    mapping(address => uint256) public botRaisedAlerts;
+
+    function setDetectionBot(address detectionBotAddress) external override {
+        usersDetectionBots[msg.sender] = IDetectionBot(detectionBotAddress);
+    }
+
+    function notify(address user, bytes calldata msgData) external override {
+        if (address(usersDetectionBots[user]) == address(0)) return;
+        try usersDetectionBots[user].handleTransaction(user, msgData) {
+            return;
+        } catch {}
+    }
+
+    function raiseAlert(address user) external override {
+        if (address(usersDetectionBots[user]) != msg.sender) return;
+        botRaisedAlerts[msg.sender] += 1;
+    }
+}
+
+contract CryptoVault {
+    address public sweptTokensRecipient;
+    IERC20 public underlying;
+
+    constructor(address recipient) {
+        sweptTokensRecipient = recipient;
+    }
+
+    function setUnderlying(address latestToken) public {
+        require(address(underlying) == address(0), "Already set");
+        underlying = IERC20(latestToken);
+    }
+
+    /*
+    ...
+    */
+
+    function sweepToken(IERC20 token) public {
+        require(token != underlying, "Can't transfer underlying token");
+        token.transfer(sweptTokensRecipient, token.balanceOf(address(this)));
+    }
+}
+
+contract LegacyToken is ERC20("LegacyToken", "LGT"), Ownable {
+    DelegateERC20 public delegate;
+
+    function mint(address to, uint256 amount) public onlyOwner {
+        _mint(to, amount);
+    }
+
+    function delegateToNewContract(DelegateERC20 newContract) public onlyOwner {
+        delegate = newContract;
+    }
+
+    function transfer(address to, uint256 value) public override returns (bool) {
+        if (address(delegate) == address(0)) {
+            return super.transfer(to, value);
+        } else {
+            return delegate.delegateTransfer(to, value, msg.sender);
+        }
+    }
+}
+
+contract DoubleEntryPoint is ERC20("DoubleEntryPointToken", "DET"), DelegateERC20, Ownable {
+    address public cryptoVault;
+    address public player;
+    address public delegatedFrom;
+    Forta public forta;
+
+    constructor(address legacyToken, address vaultAddress, address fortaAddress, address playerAddress) {
+        delegatedFrom = legacyToken;
+        forta = Forta(fortaAddress);
+        player = playerAddress;
+        cryptoVault = vaultAddress;
+        _mint(cryptoVault, 100 ether);
+    }
+
+    modifier onlyDelegateFrom() {
+        require(msg.sender == delegatedFrom, "Not legacy contract");
+        _;
+    }
+
+    modifier fortaNotify() {
+        address detectionBot = address(forta.usersDetectionBots(player));
+
+        // Cache old number of bot alerts
+        uint256 previousValue = forta.botRaisedAlerts(detectionBot);
+
+        // Notify Forta
+        forta.notify(player, msg.data);
+
+        // Continue execution
+        _;
+
+        // Check if alarms have been raised
+        if (forta.botRaisedAlerts(detectionBot) > previousValue) revert("Alert has been triggered, reverting");
+    }
+
+    function delegateTransfer(address to, uint256 value, address origSender)
+        public
+        override
+        onlyDelegateFrom
+        fortaNotify
+        returns (bool)
+    {
+        _transfer(origSender, to, value);
+        return true;
+    }
+}
+```
+
+Our objective is to make sure that CryptoValut contract does not get drained from
+the tokens it holds, namely 100 DET and LGT tokens. This time we do not hack
+anything but make it more secure. Also nice :0
+
+First, let's see how one could drain the tokens from the CryptoVault contract.
+
+The CryptoVault has a `sweepToken` function, which allows to transfer all tokens
+from the contract to the `sweptTokensRecipient`. We can't provide the DET token
+address, since it equals the `underlying` variable.
+
+But what if we call the `sweepToken` function with the legacy token address?
+We would pass the require statement and the `transfer` function of the LegacyToken
+contract would be called. That's already something. Let's follow that path.
+
+The `transfer` function of the LegacyToken contract has a check if the `delegate`
+variable is set. If it is set, the `delegateTransfer` function of the DoubleEntryPoint
+contract is called.
+
+The `delegateTransfer()` function of the DoubleEntryPoint contract has two modifiers,
+where the first checks if the caller is the LegacyToken contract and the second
+one checks if the Forta contract raised an alert.
+
+Since we call the `delegateTransfer()` function from the LegacyToken contract, we
+pass the first modifier of the function.
+
+Let's say no alarm is raised, the tokens of the CryptoVault are transferred to
+`to`, which is `sweptTokensRecipient`. Even we do not own the tokens, the CryptoVault
+contract looses the tokens, or rather gets drained of those.
+
+That means, we have to protect this path, so it does not happen.
+
+Now we need to write a contract, which raises an alarm during the execution of
+the `delegateTransfer(address to, uint256 value, address origSender)` function when 
+the `origSender` parameter equals to the Vault address.
+
+Here is the contract:
+
+```solidity
+contract DetectionBot {
+    address constant VAULT_ADDRESS = 0x5FB01487C07D122D211a6598E1AAc2D1d40F1c18;
+    function handleTransaction(address user, bytes calldata msgData) external {
+        (, , address origSender) = abi.decode(msgData[4:], (address, uint256, address));
+        if (origSender == VAULT_ADDRESS) {
+            IForta(msg.sender).raiseAlert(user);
+        }
+    }
+}
+```
+
+Register it and we are done :)
+
+### Learning
+
+>Having tokens that present a double entry point is a non-trivial pattern that might affect many protocols. This is because it is commonly assumed to have one contract per token. But it was not the case this time :) You can read the entire details of what happened [here](https://blog.openzeppelin.com/compound-tusd-integration-issue-retrospective).
