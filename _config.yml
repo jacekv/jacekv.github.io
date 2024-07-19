@@ -22,6 +22,12 @@ google_analytics: G-CBLEX9W8Q6
 #########################################################################################
 ######### Nothing below needs to be changed (unless you know what you're doing) #########
 #########################################################################################
+# theme: "jekyll-theme-hacker"
+theme: "jekyll-theme-primer"
+
+# remote_theme: pages-themes/primer@v0.2.0
+
+
 rss: rss
 
 kramdown:
@@ -31,9 +37,7 @@ kramdown:
 plugins:
   - jekyll-feed
   - jekyll-sitemap
-  - jekyll-remote-theme
-
-remote_theme: pages-themes/primer@v0.2.0
+  # - jekyll-remote-theme
 
 titles_from_headings:
   strip_title: true
