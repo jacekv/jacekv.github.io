@@ -30,6 +30,7 @@ If you want to do the same, I recommend that you try to solve the levels on your
 25. [Level 24: Puzzle Wallet](#level-24-puzzle-wallet)
 26. [Level 25: Motorbike](#level-25-motorbike)
 27. [Level 26: DoubleEntryPoint](#level-26-doubleentrypoint)
+28. [Level 27: Good Samaritan](#level-27-good-samaritan)
 
 
 
