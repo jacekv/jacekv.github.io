@@ -201,7 +201,7 @@ Our objective is to become the owner of the contract.
 
 When you read the code you will quickly realize that there is one location, where the owner is set: in the `Fal1out()` function, which has an additional comment that this is a constructor. If you inspect it closely, you will see that it contains a typo :O Instead of the function being called Fallout, it is Fal1out, where one l is a 1. In that case it is not a constructor but just a function of the contract. Ooops.
 
-All you have to do: deploy an instance of the contract, send a transaction invoking the Fal1out function (await contract.Fal1out() )and you are the owner :)
+All you have to do: deploy an instance of the contract, send a transaction invoking the Fal1out function (`await contract.Fal1out()` )and you are the owner :)
 
 ### Learning:
 Be careful when naming your constructor. Even better: Do not use named constructor functions, but use the `contructor` keyword instead. In that case you will not make this mistake.
