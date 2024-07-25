@@ -291,8 +291,8 @@ contract Attacker {
 }
 ```
 
-We deploy the contract to Goerli and call attack() 10 times :D 
-If you want to check if you have won, you can see if you transaction contains the Win event or just read out the consecutiveWins from the CoinFlip contract on the Ethernaut page using the following line: await contract.consecutiveWins()
+We deploy the contract to Goerli and call `attack()` 10 times :D 
+If you want to check if you have won, you can see if you transaction contains the Win event or just read out the consecutiveWins from the CoinFlip contract on the Ethernaut page using the following line: `await contract.consecutiveWins().then(v => v.toString()`)
 
 ### Learning:
 While writing contracts, do not forget to think about contracts interacting with your contract. This is a perfect example, where from an EOA perspective, it is very difficult to make up to 10 consecutive guesses. But that changes quickly if you start to use a contract in order to interact with the CoinFlip contract.
@@ -347,7 +347,7 @@ contract Attacker {
     }
 
     function attack() public {
-        telephoneContract.changeOwner(address(this));
+        telephoneContract.changeOwner(msg.sender);
     }
 }
 ```
@@ -389,14 +389,14 @@ contract Token {
 
 The description of the level tells us that we start off with 20 tokens. That’s generous. Our objective is to obtain more tokens, ideally a lot more :D
 
-To verify that we really have 20 tokens we call the `balanceOf()` function using the following code: `await contract.balanceOf(player)`
+To verify that we really have 20 tokens we call the `balanceOf()` function using the following code: `await contract.balanceOf(player).then(v => v.toString())`
 
 Well, we own 20 tokens :)
 
 So, how do we get more tokens?
 Let’s have a look at the `transfer()` function. The transfer checks if the user's balance minus the amount to be transferred is greater than 0.
 Since the balances mapping stores units, we can do the following: We would like to transfer 21 tokens to another address. This results into the following calculation: 20-21=2^256-1 and 2^256-1 is definitely greater than 0 :)
-So, `await contract.transfer(‘0xSomeAddress’, 21)` should work.
+So, `await contract.transfer(‘0xSomeAddressOtherThanPlayer’, 21)` should work.
 We wait for the transaction to be included into a block.
 Now we check our balance and baam. We now own a shit ton of tokens :) Way to go.
 
