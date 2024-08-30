@@ -141,3 +141,18 @@ logger.addHandler(logHandler)
 This is a simple example of how you can use a trace id with Python's logging
 module in a Fast API application. You can customize the `ContextFilter` class
 and the `get_trace_id` function to suit your needs.
+
+This works, due to [sharing of global variables across modules](https://docs.python.org/2/faq/programming.html#how-do-i-share-global-variables-across-modules) in Python.
+
+In `custom_logging.py`, we define a `trace_id` variable that will be shared
+across modules. We also define a `get_trace_id` function that generates a unique
+trace id for each request using Python's `uuid` module.
+
+We simply import the `custom_logging` module in the main Fast API application
+and can do that anywhere else if required, the module itself becomes available
+as a global name. Since there is only one instance of each module, any changes
+to the module object data are reflected everywhere.
+
+If we would to import the `trace_id` variable directly, `trace_id` would be
+accessible in `main.py` but also any changes to `trace_id` would not be
+reflected anywhere else but `main.py`.
