@@ -71,3 +71,73 @@ output.
 By using a trace id with Python's logging module, you can easily associate log
 messages with requests, and quickly identify and debug issues in your
 application.
+
+
+## Trace ID in Fast API
+
+If you are going to use the the trace id solution proposed above in a Fast API
+application, you will see that each request will have a different trace id.
+This is because the `ContextFilter` class is creating a new trace id for each
+call of the `logger` object.
+
+In order to get a single trace id for each request, we will have to use
+Fast API's middleware to create a unique trace id for each request and reference
+it in the `ContextFilter` class.
+
+Just quick info to what the Fast API middleware is, it is a function that
+intercepts requests and responses, and can be used to perform operations before
+and after the request is processed.
+
+Here's an example of how you can use a trace id with Python's logging module in
+a Fast API application:
+
+```python
+from fastapi import FastAPI
+from fastapi import Request
+
+import project.custom_logging as custom_logging
+
+app = FastAPI()
+
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    custom_logging.trace_id = custom_logging.get_trace_id()
+    response = await call_next(request)
+    return response
+```
+
+and here the the `custom_logging.py` file:
+
+```python
+import logging
+import uuid
+
+from pythonjsonlogger import jsonlogger
+
+trace_id = None
+
+def get_trace_id():
+    return uuid.uuid4()
+
+class ContextFilter(logging.Filter):
+    def filter(self, record):
+        record.trace_id = trace_id
+        return True
+
+
+LOG_LEVEL = logging.DEBUG
+LOG_FORMAT = "%(asctime)s %(name)s %(levelname)s %(message)s %(trace_id)s"
+
+logging.root.setLevel(LOG_LEVEL)
+logHandler = logging.StreamHandler()
+formatter = jsonlogger.JsonFormatter(LOG_FORMAT)
+logHandler.setFormatter(formatter)
+logger = logging.getLogger(__name__)
+logger.setLevel(LOG_LEVEL)
+logger.addFilter(ContextFilter())
+logger.addHandler(logHandler)
+```
+
+This is a simple example of how you can use a trace id with Python's logging
+module in a Fast API application. You can customize the `ContextFilter` class
+and the `get_trace_id` function to suit your needs.
