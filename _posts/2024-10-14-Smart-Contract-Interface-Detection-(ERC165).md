@@ -1,4 +1,4 @@
-# ERC-165: Standard Interface Detection in EVM Smart Contracts
+## ERC-165: Standard Interface Detection in EVM Smart Contracts
 
 If you ever had to write some code which interacts with a smart contract, you
 know that you need to know the contract's ABI (Application Binary Interface) to

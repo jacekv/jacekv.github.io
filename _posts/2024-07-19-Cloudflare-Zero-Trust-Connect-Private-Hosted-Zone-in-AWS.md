@@ -1,4 +1,4 @@
-# Connect Cloudflare Zero Trust Tunnel to VPC with private hosted zone in AWS
+## Connect Cloudflare Zero Trust Tunnel to VPC with private hosted zone in AWS
 
 That's a long title and contains lots of information. Let's break it down:
 
@@ -10,7 +10,7 @@ Warp client.
 
 Comprendre? Let's go!
 
-## Prerequisites
+### Prerequisites
 
 You have an AWS account with a VPC and a private hosted zone. You have services
 running in the private subnets of the VPC that you want to connect to using the
@@ -21,7 +21,7 @@ You should also have a Cloudflare Account :)
 
 If everything is up and ready, let's start!
 
-## Step 1: Create a Cloudflare Zero Trust Tunnel
+### Step 1: Create a Cloudflare Zero Trust Tunnel
 
 Go to your Cloudflare Zero Trust dashboard and create a new tunnel. To create
 a new tunnel, go to `Networks -> Tunnels` and click on `Add a tunnel`.
@@ -85,7 +85,7 @@ If you wait for the cloudflared connector to come up, you will see it in the
 same window as the token is. You can also go back to the starting tunnels page
 and see when the status of the tunnel changes from `INACTIVE` to `HEALTHY`.
 
-## Step 2: Access group
+### Step 2: Access group
 
 Let's create an access group which will make our life a bit easier on managing
 users joining our tunnel and what not.
@@ -97,7 +97,7 @@ like email or something else, and click on `Save`.
 
 You should see your newly created `Access Group` in the list.
 
-## Step 3: Setting up device enrollment permissions for Warp
+### Step 3: Setting up device enrollment permissions for Warp
 
 Now it is time to configure the device enrollment permissions for the Warp client.
 
@@ -111,7 +111,7 @@ For this, tick the box in front of the `Access Group` name in the
 `Assign a group` section and provide a rule name. Once you are done, click on
 `Save`.
 
-## Step 4: Configure Split Tunneling
+### Step 4: Configure Split Tunneling
 
 Split Tunnels can be configured to exclude or include IP addresses or domains
 from going through WARP. This feature is commonly used to run WARP alongside a
@@ -138,7 +138,7 @@ Remove the `172.16.0.0/12` and add the following CIDRs:
 
 This should direct all `172.18.0.0/16` traffic through the tunnel.
 
-## Step 5: Install Warp and login
+### Step 5: Install Warp and login
 
 Next it is time to install the Warp client on your machine and login with your
 account, which has been whitelisted in the `Access Group`.
@@ -155,7 +155,7 @@ to go with the Exclude mode.
 
 If someone has an idea on how to make the Include mode work, please let me know.
 
-## Step 6: Add private DNS resolver
+### Step 6: Add private DNS resolver
 
 We want to reach our internal services with DNS entries from the private hosted
 zone in AWS. In order to know which DNS resolver to use, check the
@@ -170,7 +170,7 @@ and add the DNS resolver IP address.
 
 And that's it :)
 
-## Step 7: Test
+### Step 7: Test
 
 Now it is time to test if everything is working as expected. Try to reach whatever
 private service you have in your VPC using the internal DNS name.
@@ -179,7 +179,7 @@ In case it does not work, check if the security group of the Cloudflared connect
 is whitelisted in the ingress rules of the security group of the service you
 want to reach.
 
-## Conclusion
+### Conclusion
 
 You have successfully connected your local machine to your VPC with a private
 hosted zone in AWS using Cloudflare Zero Trust Tunnel. You can now access your
