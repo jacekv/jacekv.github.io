@@ -1,7 +1,6 @@
 ---
 layout: post
 title: "ERC-165: Standard Interface Detection in EVM Smart Contracts"
-categories: misc
 ---
 
 If you ever had to write some code which interacts with a smart contract, you
