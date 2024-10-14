@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Use Python's Logging Module with a Trace Id"
+title: "ERC-165: Standard Interface Detection in EVM Smart Contracts"
 ---
 
 # Use Python's Logging Module with a Trace Id
@@ -78,7 +78,7 @@ messages with requests, and quickly identify and debug issues in your
 application.
 
 
-## Trace ID in Fast API
+### Trace ID in Fast API
 
 If you are going to use the the trace id solution proposed above in a Fast API
 application, you will see that each request will have a different trace id.
