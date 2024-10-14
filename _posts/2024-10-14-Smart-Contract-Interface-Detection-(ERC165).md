@@ -3,6 +3,8 @@ layout: post
 title: "ERC-165: Standard Interface Detection in EVM Smart Contracts"
 ---
 
+{{ page.title}}
+
 If you ever had to write some code which interacts with a smart contract, you
 know that you need to know the contract's ABI (Application Binary Interface) to
 be able to interact with it. This is a JSON file that describes the functions
