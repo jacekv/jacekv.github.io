@@ -1,9 +1,9 @@
 ---
 layout: post
-title: "ERC-165: Standard Interface Detection in EVM Smart Contracts"
+title: "Use Python's Logging Module with a Trace Id"
 ---
 
-# Use Python's Logging Module with a Trace Id
+## Use Python's Logging Module with a Trace Id
 
 Python's logging module is a powerful tool for debugging and monitoring your
 code. It allows you to log messages at different levels of severity, and to
