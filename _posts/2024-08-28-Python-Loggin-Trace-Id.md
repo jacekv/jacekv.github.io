@@ -1,3 +1,4 @@
+---
 layout: post
 title: "Use Python's Logging Module with a Trace Id"
 ---
