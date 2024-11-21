@@ -85,6 +85,12 @@ are the amounts of the two tokens in the pool.
 Example: If you burn 50 liquidity pool tokens from a pool with 100 tokens of token A and 100 tokens of token B,
 you would receive 50 tokens of token A and 50 tokens of token B, since `(50 / 100) * 100 = 50`. [[Uniswap V2 Core](https://app.uniswap.org/whitepaper.pdf)]
 
+### Fees in liquidity pools
+
+In addition to providing liquidity to the pool, users can earn trading fees by staking their liquidity pool tokens.
+The trading fees are collected from users who trade on the platform and are added back into the pool. The fees are
+distributed to liquidity providers based on their share of the pool.
+
 ## Conclusion
 
 Liquidity pools are a key component of decentralized exchanges, providing a way for users to trade tokens
