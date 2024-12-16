@@ -1,6 +1,11 @@
-title: "Jacek's Blog"
-author: "Jacek Varky"
-description: "Collection of my ideas and work." # This will show up in places like twitter, linkedin, etc, if you share your sites url as a post.
+title: Jacek's Blog
+author:
+  name: Jacek Varky
+
+description: >
+  Collection of different articles and thoughts on various topics. Whatever I am working
+  on and I feel that I might need it later, is going to be written down here ;)
+  You never know.
 
 url: "https://blog.varkiwi.com"
 
@@ -22,14 +27,7 @@ linkedin_username: "Jacek Varky"
 #########################################################################################
 ######### Nothing below needs to be changed (unless you know what you're doing) #########
 #########################################################################################
-# theme: "jekyll-theme-hacker"
-# theme: "jekyll-theme-primer"
 theme: "minima"
-
-# remote_theme: pages-themes/primer@v0.2.0
-
-
-# rss: rss
 
 kramdown:
   syntax_highlighter_opts:
