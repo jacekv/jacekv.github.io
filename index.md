@@ -1,1 +1,1 @@
-I am going to use this space to collect my ideas and work.
+This space will be my creative hub—a place to brainstorm, refine, and share my ideas. Here, I’ll document my journey of growth, turning thoughts into projects and exploring new possibilities. Whether it’s a spark of inspiration or a completed work, everything I share here reflects my passion for learning and creating.
