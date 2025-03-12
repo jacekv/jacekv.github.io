@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Get blockchain dddress from AWS KMS"
+title: "Get blockchain address from AWS KMS"
 ---
 
 # Get blockchain address from AWS KMS
