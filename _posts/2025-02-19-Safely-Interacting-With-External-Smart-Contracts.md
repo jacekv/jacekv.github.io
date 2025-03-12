@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Safely Interacting with External Smart Contracts: A Developer's Guide"
-tags: [Solidity, Security]
+tags: Solidity
 ---
 
 # Safely Interacting with External Smart Contracts: A Developer's Guide
