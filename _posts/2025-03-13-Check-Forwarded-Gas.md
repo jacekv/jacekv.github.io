@@ -31,8 +31,9 @@ Let's examine a naive implementation that is vulnerable to this attack:
 ```solidity
 // VULNERABLE IMPLEMENTATION - DO NOT USE
 function forwardCall(address target, bytes memory data) external {
-    // No gas checks
+    // No gas checks - vulnerable to insufficient gas griefing
     (bool success, ) = target.call(data);
+    // enough gas to complete the call
     require(success, "Call failed");
 }
 ```
@@ -41,7 +42,7 @@ In this implementation, an attacker could provide just enough gas for the forwar
 
 ## Naive gas left check
 
-One common approach to prevent insufficient gas griefing is to check the gas how much gas is left right before the subcall:
+One common approach to prevent insufficient gas griefing is to check how much gas is left right before the subcall:
 
 ```solidity
 // UNSAFE GAS CHECK - DO NOT USE
@@ -53,7 +54,11 @@ function forwardCall(address target, bytes memory data, uint256 gasLimit) extern
 }
 ```
 
-While this approach seems reasonable, it's not secure. The problem is that `gasleft()` returns the gas available at the time of the check and does not take the dynamic gas costs of the `call` operation into account. This means that an attacker can still manipulate the gas forwarding to their advantage.
+While this approach seems reasonable, it's not secure.
+
+The problem is that `gasleft()` returns the gas available at the time of the check and does not take the dynamic gas costs of the `call` operation into account.
+
+This means that an attacker can still manipulate the gas forwarding to their advantage.
 
 ## The EVM Gas Stipend Mechanism
 To understand the solution, we need to understand how Ethereum's EVM handles gas forwarding. When a contract calls another contract:
