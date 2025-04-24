@@ -4,7 +4,9 @@ title: "Token Approvals in Ethereum: From ERC20 to Permit2"
 tags: Solidity ERC20 Approval Permit Permit2 EIP2612
 ---
 
-# Table of contents
+# Token Approvals in Ethereum: From ERC20 to Permit2
+
+## Table of contents
 
 1. [Introduction](#introduction)
     1. [Why Token Approvals Matter](#why-token-approvals-matter)
@@ -18,7 +20,6 @@ tags: Solidity ERC20 Approval Permit Permit2 EIP2612
     3. [Nonces in Permit2](#nonces-in-permit2)
 5. [Real-world implementation examples](#real-world-implementation-examples)
 
-# Token Approvals in Ethereum: From ERC20 to Permit2
 
 ## Introduction <a name="introduction"></a>
 
