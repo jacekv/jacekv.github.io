@@ -19,6 +19,8 @@ tags: Solidity ERC20 Approval Permit Permit2 EIP2612
     2. [PermitWitnessTransferFrom](#permitwitnesstransferfrom)
     3. [Nonces in Permit2](#nonces-in-permit2)
 5. [Real-world implementation examples](#real-world-implementation-examples)
+6. [Recommendation for new ERC20 Token developers](#recommendation-for-new-erc20-token-developers)
+7. [Conclusion](#conclusion)
 
 
 ## Introduction <a name="introduction"></a>
@@ -1085,3 +1087,47 @@ Different projects have adopted different approval mechanisms based on their spe
 - **1inch**: Has integrated Permit2 compatibility for cross-protocol interactions
 
 This progression shows how the ecosystem is gradually moving toward more efficient, secure, and flexible approval mechanisms.
+
+## Recommendation for New ERC20 Token Developers <a name="recommendation-for-new-erc20-token-developers"></a>
+
+Implement EIP2612 Permit in Your ERC20 Tokens
+
+If you're developing a new ERC20 token contract, we strongly recommend implementing the EIP2612 permit functionality directly within your token. Here's why:
+
+* Enhanced User Experience: Permit enables gasless approvals, allowing users to authorize token transfers with a signature rather than a separate transaction. This significantly reduces friction in your token's UX flow.
+* Reduced Transaction Costs: By eliminating separate approval transactions, you save your users gas fees and simplify their interaction with your token.
+* Future-Proof Compatibility: Many modern DeFi protocols and interfaces already support permit functionality. Building it in from the start ensures your token will work seamlessly with these systems.
+* Implementation Simplicity: Using OpenZeppelin's ERC20Permit extension makes implementation straightforward. You can simply inherit from this contract rather than building the functionality from scratch.
+
+```
+solidity// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+
+contract MyToken is ERC20Permit {
+    constructor(uint256 initialSupply) 
+        ERC20("MyToken", "MTK") 
+        ERC20Permit("MyToken") {
+        _mint(msg.sender, initialSupply);
+    }
+}
+```
+* Security Considerations: The permit function provides time-bound approvals through the deadline parameter, reducing the security risks associated with unlimited approvals.
+
+Even if your users don't immediately take advantage of permit functionality, implementing it future-proofs your token. As the ecosystem evolves toward more efficient user experiences, your token will be ready to participate in these improvements without requiring upgrades or wrapper contracts.
+For tokenomics systems where you anticipate high volumes of approvals and transfers, this small upfront implementation cost pays significant dividends in long-term usability and integration potential.
+
+## Conclusion <a name="conclusion"></a>
+
+The evolution of token approval mechanisms in Ethereum represents a critical advancement in blockchain UX design. We've traced this journey from the basic but cumbersome ERC20 approve function, through the more streamlined EIP2612 permit approach, to Uniswap's versatile Permit2 contract.
+Each iteration has addressed key limitations of its predecessors:
+
+ERC20 approvals established the foundation but required separate transactions and created security concerns with unlimited allowances
+EIP2612's permit eliminated separate approval transactions through off-chain signatures but was limited to tokens that implemented the standard
+Permit2 brought these benefits to all tokens while adding batch operations, expiring approvals, and custom witness data through permitWitnessTransferFrom
+
+These improvements collectively work toward a more user-friendly DeFi ecosystem where token interactions are faster, cheaper, and more secure. By reducing transaction count, minimizing gas costs, and adding time-bound permissions, these mechanisms are making blockchain applications more accessible to mainstream users.
+For developers building on Ethereum, choosing the right approval mechanism depends on your specific use case, user base, and security requirements. New projects should strongly consider implementing EIP2612 permit functionality directly or integrating with Permit2 for maximum flexibility and compatibility.
+As the ecosystem continues to evolve, we can expect further innovations that will make token interactions even more seamless. The ongoing focus on improving these fundamental building blocks is what will ultimately enable Ethereum to scale beyond early adopters and into widespread adoption.
+By understanding these approval mechanisms and implementing them correctly, you'll be contributing to a more efficient, secure, and user-friendly DeFi landscape.
