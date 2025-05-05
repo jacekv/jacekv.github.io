@@ -9,124 +9,123 @@ be posting my notes here.
 
 #### What is it?
 
-Intelligent Threat Discovery to protect your AWS account using Machine Learning
+* Intelligent Threat Discovery to protect your AWS account using Machine Learning
 algorithms, anomaly detection, and 3rd party data.
 
-Input data to GuardDuty includes:
-
+* Input data to GuardDuty includes:
     * VPC Flow Logs - unusual internet traffic, unusual IP address, etc
     * CloudTrail Event Logs - unusual API calls, unauthorized deployments, etc.
     * DNS Logs - unusual DNS queries like encoded data within DNS queries, etc.
     * Optional features - EKS Audit logs, RDS & Aurora, EBS, Lambda, and more
 
-It can also protect against CryptoCurrency attacks, since it has a dedicated
+* It can also protect against CryptoCurrency attacks, since it has a dedicated
 "finding" for it.
 
-You can manage multiple accounts in GuardDuty,
+* You can manage multiple accounts in GuardDuty,
   * through an AWS Organization
   * sending invitation through GuardDuty
 
-The Administrator account can add and remove member accounts, and manage GuardDuty
+* The Administrator account can add and remove member accounts, and manage GuardDuty
 withing the associated member accounts. It can also manage findings, suppression
 rules, trusted IP lists, threat lists.
 
-In an AWS Organization, you can specify a member account as the Organization's
+* In an AWS Organization, you can specify a member account as the Organization's
 delegated administrator for GuardDuty.
 
 #### Findings Automated Response
 
-Findings are potential security issues for malicious events happening in you AWS
+* Findings are potential security issues for malicious events happening in you AWS
 account.
 
-You are able to automate responses to findings, by using EventBridge. Send alerts
+* You are able to automate responses to findings, by using EventBridge. Send alerts
 to SNS, SQS, Lambda, etc. which can trigger a response.
 
-Events are published to both the administrator account and the member account
+* Events are published to both the administrator account and the member account
 that it is originating from.
 
-Each finding has a severity value between 0.1 to 8+.
+* Each finding has a severity value between 0.1 to 8+.
 
 #### Trusted and Thread IP Lists
 
-Works only for IP addresses
+* Works only for IP addresses
 
-Trusted IP lists are IP addresses and CIDR ranges that you trust and you do not
+* Trusted IP lists are IP addresses and CIDR ranges that you trust and you do not
 want to be flagged as malicious.
 
-Thread IP lists are IP addresses and CIDR ranges that you do not trust and you
+* Thread IP lists are IP addresses and CIDR ranges that you do not trust and you
 want to be flagged as malicious.
 
 #### Suppression Rules
 
-Set of criteria that automatically filter and archive new findings.
+* Set of criteria that automatically filter and archive new findings.
 
-You can suppress entire findings types or specific findings defined on more granular
+* You can suppress entire findings types or specific findings defined on more granular
 criteria.
 
-Suppressed findings are NOT sent to Security Hub, S3 Detective, or Event Bridge.
+* Suppressed findings are NOT sent to Security Hub, S3 Detective, or Event Bridge.
 
-Suppressed findings can be still be viewed in the Archive.
+* Suppressed findings can be still be viewed in the Archive.
 
 #### Potential Question in the Exam
 
-Problem: GuardDuty is activated but it didn't generate any DNS based findings.
+* Problem: GuardDuty is activated but it didn't generate any DNS based findings.
 
-Reason: GuardDuty only processes DNS logs if you use the default VPC DNS
+* Reason: GuardDuty only processes DNS logs if you use the default VPC DNS
 resolver. All other types of DNS resolver won't generate DNS based findings.
 
-If GuardDuty is suspended or disabled, then no finding types are generated.
+* If GuardDuty is suspended or disabled, then no finding types are generated.
 
-Best practice to enable GuardDuty in all regions.
+* Best practice to enable GuardDuty in all regions.
 
 
 ### AWS Security Hub
 
 #### What is it?
 
-A central security tool to manage security across multiple AWS accounts and
+* A central security tool to manage security across multiple AWS accounts and
 and to automate security checks.
 
-It aggregates findings, insights, and security scores from multiple
+* It aggregates findings, insights, and security scores from multiple
 regions to a single aggregation region.
 
-You can also have AWS Organizations Integration, where all accounts are covered
+* You can also have AWS Organizations Integration, where all accounts are covered
 by Security Hub.
 
-The integrated dashboard shows your current security and compliance status
+* The integrated dashboard shows your current security and compliance status
 to quickly take actions.
 
-It automatically aggregates alerts in predefined or personal findings format
+* It automatically aggregates alerts in predefined or personal findings format
 from various AWS services & AWS partner tools.
 
-In order to use Security Hub, you need to enable AWS Config. If you have
+* In order to use Security Hub, you need to enable AWS Config. If you have
 multiple accounts, due to an Organization, you need to enable AWS Config in
 all accounts.
 
-Guard Duty is enabled automatically when you enable Security Hub. Guard Duty
+* Guard Duty is enabled automatically when you enable Security Hub. Guard Duty
 will send findings to Security Hub in AWS Security Finding Format (ASFF).
 
-You can also create Custom Actions in Security Hub, which are automated
+* You can also create Custom Actions in Security Hub, which are automated
 remediation actions that can be executed on specific findings.
 
-A finding is going to send a message to EventBridge, which will trigger a
+* A finding is going to send a message to EventBridge, which will trigger a
 Lambda function to execute the remediation action.
 
 ### Amazon Detective
 
-GuardDuty, Macie, and Security Hub are used to identify potential security
+* GuardDuty, Macie, and Security Hub are used to identify potential security
 issues or findings.
 
-Amazon Detective analyzes, investigates, and quickly identifies the root cause
+* Amazon Detective analyzes, investigates, and quickly identifies the root cause
 of security issues or suspicious activities (using Machine Learning and graphs).
 
-It automatically collects and processes events from VPC Flow Logs, CloudTrail,
+* It automatically collects and processes events from VPC Flow Logs, CloudTrail,
 GuardDuty and creates a unified view.
 
-Produces visualizations with details and context to get to the root cause.
+* Produces visualizations with details and context to get to the root cause.
 
 ### Penetration Testing on AWS
 
-AWS customers can carry out security assessments or penetration tests against
+* AWS customers can carry out security assessments or penetration tests against
 their own AWS infrastructure without prior approval for 8 services:
 
 1. EC2, NAT Gateways, and Elastic Load Balancers
@@ -150,15 +149,15 @@ You can contact AWS Support to request permission for prohibited activities.
 
 ### DDoS Simulation Testing on AWS
 
-Controlled DDos attack which enables you to evaluate the resilience of your
+* Controlled DDos attack which enables you to evaluate the resilience of your
 applications against DDoS attacks.
 
-It must be performed by an approved AWS DDoS Test Partner.
+* It must be performed by an approved AWS DDoS Test Partner.
 
-The target can be either Protected Resources or Edge-Optimized API Gateway
+* The target can be either Protected Resources or Edge-Optimized API Gateway
 that is subscribed to Shield Advanced.
 
-The Attack must not originate from AWS resources, not exceed 20 Gigabits/second,
+* The Attack must not originate from AWS resources, not exceed 20 Gigabits/second,
 not exceed 5 million packets/second for Cloudfront and 50000 packets/second for
 any other service.
 
@@ -166,7 +165,7 @@ any other service.
 
 #### Compromised EC2 Instances
 
-Steps to address compromised EC2 instances:
+* Steps to address compromised EC2 instances:
     * Capture the instance's metadata
     * Enable Termination Protection (can't be terminated)
     * Isolate the instance (replace instance's SG - no outbound traffic)
@@ -175,10 +174,10 @@ Steps to address compromised EC2 instances:
     * Snapshot the EBS volume
     * Tag the EC2 instance (e.g. investigation ticket)
         
-Offline investigation: shutdown instance - look at memory
-Online investigation (e.g. snapshot memory or capture network traffic) 
-Automate the isolation process: Lambda
-Automate memory capture: SSM Run command
+* Offline investigation: shutdown instance - look at memory
+* Online investigation (e.g. snapshot memory or capture network traffic) 
+* Automate the isolation process: Lambda
+* Automate memory capture: SSM Run command
 
 #### Compromised S3 Bucket
 
@@ -217,30 +216,30 @@ Secure your RDS DB instance, recommended settings:
 
 ### Compromised AWS Credentials
 
-Identify the compromised IAM user using GuardDuty
-Rotate the exposed AWS Credentials
-Invalidate temporary credentials by attaching an explicit Deny policy to
+* Identify the compromised IAM user using GuardDuty
+* Rotate the exposed AWS Credentials
+* Invalidate temporary credentials by attaching an explicit Deny policy to
 the affected IAM user with an STS date condition
-Check CloudTrails logs for other unauthorized activities
-Review your AWS resource (e.g. delete unauthorized resources)
-Verify your AWS account information
+* Check CloudTrails logs for other unauthorized activities
+* Review your AWS resource (e.g. delete unauthorized resources)
+* Verify your AWS account information
 
 #### Compromised IAM Role
 
-Invalidate temporary credentials bu attaching an explicit Deny policy to the
+* Invalidate temporary credentials bu attaching an explicit Deny policy to the
 affected IAM user with an STS date condition
-Revoke access for the identity to the linked AD if any
-Check CloudTrail logs for other unauthorized activity
-Review your AWS resources
-Verify your AWS account information
+* Revoke access for the identity to the linked AD if any
+* Check CloudTrail logs for other unauthorized activity
+* Review your AWS resources
+* Verify your AWS account information
 
 #### Compromised Account
 
-Rotate and delete exposed AWS Access Keys
-Rotate and delete any unauthorized IAM users credentials
-Rotate and delete all EC2 key pairs
-Review your AWS resources
-Verify your AWS account information
+* Rotate and delete exposed AWS Access Keys
+* Rotate and delete any unauthorized IAM users credentials
+* Rotate and delete all EC2 key pairs
+* Review your AWS resources
+* Verify your AWS account information
 
 ## Security Logging and Monitoring
 
@@ -270,10 +269,10 @@ A risk score is associated with all vulnerabilities for prioritization
 
 ### Logging in AWS for security and compliance
 
-To help compliance requirements, AWS provides many service-specific security
+* To help compliance requirements, AWS provides many service-specific security
 and audit logs.
 
-Service logs include:
+* Service logs include:
  * CloudTrail logs - trace all API calls
  * Config Rules - for config & compliance over time
  * CloudWatch logs - for full data retention
@@ -282,9 +281,9 @@ Service logs include:
  * CloudFront Logs - web distribution logs
  * WAF Logs - web application firewall logs
 
-Logs can be analyzed using AWS Athena if they are stored in S3.
-You should encrypt logs in S3, control access using IAM & Bucket Policies, MFA
-Move logs to Glacier for cost savings
+* Logs can be analyzed using AWS Athena if they are stored in S3.
+* You should encrypt logs in S3, control access using IAM & Bucket Policies, MFA
+* Move logs to Glacier for cost savings
 
 ### AWS Systems Manager (SSM)
 
