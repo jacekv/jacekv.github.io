@@ -441,3 +441,17 @@ dramatically expanding their capabilities.
 As more developers build on this foundation and more users adopt these new patterns, EIP-7702 will likely be remembered as the moment Ethereum accounts truly came alive.
 
 The future of Ethereum accounts is here, and it's more flexible, powerful, and user-friendly than ever before.
+
+---
+
+Edit (23.05.2025):
+I haven't put much thought into the relayer example, but if you look closely at
+the transaction type 4, you see that the `authorizationList` is a list of
+authorizations, which means you can set multiple authorizations at once.
+
+Therefore, I changed the code to set the pointer to the contract address
+for two accounts at once, two distinct users. Additionally I changed the `to`
+field to the relayer address.
+
+That means, the relayer can trigger a smart contract and set at the same time
+the pointer for different users -> batching of authorizations.
