@@ -50,7 +50,7 @@ contract SignatureMalleability {
 Next a simple Python code which signs a message, shows the signature and then
 creates a malleable signature:
 
-```python
+```Python
 from web3 import Web3, EthereumTesterProvider
 from eth_account.messages import encode_defunct
 
@@ -123,39 +123,40 @@ Signature malleability attacks have led to significant losses in DeFi protocols:
 
 ## Defense Strategies
 1. Low-S Enforcement (Recommended)
-The most robust defense is enforcing that `s` values are in the lower half of the curve order:
-```solidity
-pragma solidity ^0.8.23;
+    The most robust defense is enforcing that `s` values are in the lower half of the curve order:
 
-contract SignatureMalleabilitySafe {
+    ```solidity
+    pragma solidity ^0.8.23;
 
-    uint256 private constant CURVE_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141;
-    uint256 private constant HALF_CURVE_ORDER = CURVE_ORDER / 2;
+    contract SignatureMalleabilitySafe {
 
-    function checkSignatureSafe(bytes32 hash, bytes32 r, bytes32 s, uint8 v) public pure returns (address) {
-        require(uint256(s) <= HALF_CURVE_ORDER, "Invalid signature: s value too high");
+        uint256 private constant CURVE_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141;
+        uint256 private constant HALF_CURVE_ORDER = CURVE_ORDER / 2;
 
-        address recoveredAddress = ecrecover(hash, v, r, s);
-        return recoveredAddress;
+        function checkSignatureSafe(bytes32 hash, bytes32 r, bytes32 s, uint8 v) public pure returns (address) {
+            require(uint256(s) <= HALF_CURVE_ORDER, "Invalid signature: s value too high");
+
+            address recoveredAddress = ecrecover(hash, v, r, s);
+            return recoveredAddress;
+        }
     }
-}
-```
-
+    ```
 2. Using OpenZeppelin's ECDSA Library
-OpenZeppelin provides a battle-tested implementation that includes malleability protection:
-```solidity
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+    OpenZeppelin provides a battle-tested implementation that includes malleability protection:
 
-contract SecureContractWithOZ {
-    function checkSignatureSafe(bytes32 hash, bytes32 r, bytes32 s, uint8 v) public pure returns (address) {
+    ```solidity
+    import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-        address recoveredAddress = ECDSA.recover(
-            hash, v, r, s
-        );
-        return recoveredAddress;
+    contract SecureContractWithOZ {
+        function checkSignatureSafe(bytes32 hash, bytes32 r, bytes32 s, uint8 v) public pure returns (address) {
+
+            address recoveredAddress = ECDSA.recover(
+                hash, v, r, s
+            );
+            return recoveredAddress;
+        }
     }
-}
-```
+    ```
 
 ## Best Practices for Developers
 
