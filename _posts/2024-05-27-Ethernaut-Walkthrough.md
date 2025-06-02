@@ -34,7 +34,8 @@ If you want to do the same, I recommend that you try to solve the levels on your
 29. [Level 28: Gaatekeeper Three](#level-28-gatekeeper-three)
 30. [Level 29: Switch](#level-29-switch)
 31. [Level 30: High Order](#level-30-high-order)
-32. [Level 31: Stale](#"level-31-stake")
+32. [Level 31: Stake](#level-31-stake")
+33. [Level 32: Impersonator](#level-32-impersonator)
 
 ## Level 0: Intro <a name="level-0-intro"></a>
 
@@ -3624,3 +3625,332 @@ And we are done :)
 When you do calls to other contracts, always check if the call has been successful.
 If you do not check, you might end up in a situation where you think you have
 done something, but in reality, you haven't.
+
+## Level 32: Impersonator <a name="level-32-impersonator"></a>
+
+New level to crack:
+
+> SlockDotIt’s new product, ECLocker, integrates IoT gate locks with Solidity
+> smart contracts, utilizing Ethereum ECDSA for authorization. 
+> When a valid signature is sent to the lock, the system emits an Open event,
+> unlocking doors for the authorized controller.
+> SlockDotIt has hired you to assess the security of this product before its launch.
+> Can you compromise the system in a way that anyone can open the door?
+
+And here the contract:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+import "openzeppelin-contracts-08/access/Ownable.sol";
+
+// SlockDotIt ECLocker factory
+contract Impersonator is Ownable {
+    uint256 public lockCounter;
+    ECLocker[] public lockers;
+
+    event NewLock(address indexed lockAddress, uint256 lockId, uint256 timestamp, bytes signature);
+
+    constructor(uint256 _lockCounter) {
+        lockCounter = _lockCounter;
+    }
+
+    function deployNewLock(bytes memory signature) public onlyOwner {
+        // Deploy a new lock
+        ECLocker newLock = new ECLocker(++lockCounter, signature);
+        lockers.push(newLock);
+        emit NewLock(address(newLock), lockCounter, block.timestamp, signature);
+    }
+}
+
+contract ECLocker {
+    uint256 public immutable lockId;
+    bytes32 public immutable msgHash;
+    address public controller;
+    mapping(bytes32 => bool) public usedSignatures;
+
+    event LockInitializated(address indexed initialController, uint256 timestamp);
+    event Open(address indexed opener, uint256 timestamp);
+    event ControllerChanged(address indexed newController, uint256 timestamp);
+
+    error InvalidController();
+    error SignatureAlreadyUsed();
+
+    /// @notice Initializes the contract the lock
+    /// @param _lockId uinique lock id set by SlockDotIt's factory
+    /// @param _signature the signature of the initial controller
+    constructor(uint256 _lockId, bytes memory _signature) {
+        // Set lockId
+        lockId = _lockId;
+
+        // Compute msgHash
+        bytes32 _msgHash;
+        assembly {
+            mstore(0x00, "\x19Ethereum Signed Message:\n32") // 28 bytes
+            mstore(0x1C, _lockId) // 32 bytes
+            _msgHash := keccak256(0x00, 0x3c) //28 + 32 = 60 bytes
+        }
+        msgHash = _msgHash;
+
+        // Recover the initial controller from the signature
+        address initialController = address(1);
+        assembly {
+            let ptr := mload(0x40)
+            mstore(ptr, _msgHash) // 32 bytes
+            mstore(add(ptr, 32), mload(add(_signature, 0x60))) // 32 byte v
+            mstore(add(ptr, 64), mload(add(_signature, 0x20))) // 32 bytes r
+            mstore(add(ptr, 96), mload(add(_signature, 0x40))) // 32 bytes s
+            pop(
+                staticcall(
+                    gas(), // Amount of gas left for the transaction.
+                    initialController, // Address of `ecrecover`.
+                    ptr, // Start of input.
+                    0x80, // Size of input.
+                    0x00, // Start of output.
+                    0x20 // Size of output.
+                )
+            )
+            if iszero(returndatasize()) {
+                mstore(0x00, 0x8baa579f) // `InvalidSignature()`.
+                revert(0x1c, 0x04)
+            }
+            initialController := mload(0x00)
+            mstore(0x40, add(ptr, 128))
+        }
+
+        // Invalidate signature
+        usedSignatures[keccak256(_signature)] = true;
+
+        // Set the controller
+        controller = initialController;
+
+        // emit LockInitializated
+        emit LockInitializated(initialController, block.timestamp);
+    }
+
+    /// @notice Opens the lock
+    /// @dev Emits Open event
+    /// @param v the recovery id
+    /// @param r the r value of the signature
+    /// @param s the s value of the signature
+    function open(uint8 v, bytes32 r, bytes32 s) external {
+        address add = _isValidSignature(v, r, s);
+        emit Open(add, block.timestamp);
+    }
+
+    /// @notice Changes the controller of the lock
+    /// @dev Updates the controller storage variable
+    /// @dev Emits ControllerChanged event
+    /// @param v the recovery id
+    /// @param r the r value of the signature
+    /// @param s the s value of the signature
+    /// @param newController the new controller address
+    function changeController(uint8 v, bytes32 r, bytes32 s, address newController) external {
+        _isValidSignature(v, r, s);
+        controller = newController;
+        emit ControllerChanged(newController, block.timestamp);
+    }
+
+    function _isValidSignature(uint8 v, bytes32 r, bytes32 s) internal returns (address) {
+        address _address = ecrecover(msgHash, v, r, s);
+        require (_address == controller, InvalidController());
+
+        bytes32 signatureHash = keccak256(abi.encode([uint256(r), uint256(s), uint256(v)]));
+        require (!usedSignatures[signatureHash], SignatureAlreadyUsed());
+
+        usedSignatures[signatureHash] = true;
+
+        return _address;
+    }
+}
+```
+
+Based on the description (`Can you compromise the system in a way that anyone can open the door?`)
+I assume that we have to crack the `ECLocker` contract and not the `Impersonator` contract.
+
+Time to request a new instance. Once the requested instance is deployed, we can
+see that the `contract` object in the developer console has `deployNewLock` method.
+Well, let's check if maybe during the initialization a new lock has been deployed.
+
+Go to your favorite block explorer and check the transactions of the `Impersonator`
+contract. Checking the internal transactions we can see that 2 contract creations
+have been made. The first one is the `Impersonator` contract itself, the second
+one is the `ECLocker` contract - save the address :)
+
+Let's disect the constructor to understand what is going on there:
+
+```solidity
+// Set lockId
+lockId = _lockId;
+
+// Compute msgHash
+bytes32 _msgHash;
+assembly {
+    mstore(0x00, "\x19Ethereum Signed Message:\n32") // 28 bytes
+    mstore(0x1C, _lockId) // 32 bytes
+    _msgHash := keccak256(0x00, 0x3c) //28 + 32 = 60 bytes
+}
+msgHash = _msgHash;
+```
+
+`lockId` is set to the `_lockId` parameter, which is passed during the
+deployment of the contract. If we call `await contract.lockCounter().then(v => v.toString())`
+we can see that it is set to 1337 (in my case). Since `ECLocker newLock = new ECLocker(++lockCounter, signature);`
+uses the pre-increment operator, it is going to increment the value and only than
+pass it on. Therefore, `lockId = 1337`.
+
+After setting the `lockId`, the `msgHash` is computed. The `msgHash`
+is a hash of the string `"\x19Ethereum Signed Message:\n32"` and the `lockId`.
+
+`x19Ethereum Signed Message:\n32` is stored at memory location `0x00` and has a length of 28 bytes.
+The `lockId` is stored at memory location `0x1C` and has a length of 32 bytes since
+it is a uint256. The `keccak256` function is called with the memory location
+`0x00` and a length of `0x3c` (60 bytes), which takes the message and lock id into account.
+The result is stored in the `_msgHash` and then assigned to `msgHash`.
+
+Next part of the constrctor code: 
+
+```solidity
+// Recover the initial controller from the signature
+address initialController = address(1);
+assembly {
+    let ptr := mload(0x40)
+    mstore(ptr, _msgHash) // 32 bytes # store _msgHash at 0x40 + 32
+    mstore(add(ptr, 32), mload(add(_signature, 0x60))) // 32 byte v  0x60 = 96
+    mstore(add(ptr, 64), mload(add(_signature, 0x20))) // 32 bytes r 0x20 = 32
+    mstore(add(ptr, 96), mload(add(_signature, 0x40))) // 32 bytes s 0x40 = 64
+    pop(
+        staticcall(
+            gas(), // Amount of gas left for the transaction.
+            initialController, // Address of `ecrecover`.
+            ptr, // Start of input.
+            0x80, // Size of input. 32 + 32 + 32 + 32 = 128 bytes = 0x80.
+            0x00, // Start of output.
+            0x20 // Size of output.
+        )
+    )
+    if iszero(returndatasize()) {
+        mstore(0x00, 0x8baa579f) // `InvalidSignature()`.
+        revert(0x1c, 0x04)
+    }
+    initialController := mload(0x00)
+    mstore(0x40, add(ptr, 128))
+}
+```
+
+The `initialController` is set to `address(1)`, which is the address of the
+pre-compiled `ecrecover` contract. Next it loads a pointer from memory `0x40`.
+
+Solidity manages memory in the following way. There is a “free memory pointer”
+at position 0x40 in memory. If you want to allocate memory, use the memory
+starting from where this pointer points at and update it. The first 64 bytes
+of memory can be used as “scratch space” for short-term allocation.
+The 32 bytes after the free memory pointer (i.e., starting at 0x60) are meant
+to be zero permanently and is used as the initial value for empty dynamic
+memory arrays. This means that the allocatable memory starts at 0x80,
+which is the initial value of the free memory pointer.
+
+The code stores the `_msgHash` in memory at the given location, followed by
+the `v`, `r` and `s` values of the signature. The `v`, `r` and `s` values are
+loaded from the `_signature` parameter, which is passed during the deployment
+of the contract.
+
+Once all the data has been stored, the `staticcall` function is used to call
+the `ecrever` contract with the pointer to the data, the size of the data
+(0x80 = 128 bytes) and the output location (0x00) and size (0x20 = 32 bytes).
+
+It uses the signature to recover the address of the signature signer and use the
+retrieved address as the `initialController`. If the call fails, it reverts
+with the `InvalidSignature()` error. If the call is successful, it stores the
+retrieved address in the `initialController` variable and updates the free memory
+pointer to the new location (which is `add(ptr, 128)`).
+
+Great, now let's have a look at the `changeController` function:
+
+```solidity
+function changeController(uint8 v, bytes32 r, bytes32 s, address newController) external {
+    _isValidSignature(v, r, s);
+    controller = newController;
+    emit ControllerChanged(newController, block.timestamp);
+}
+
+function _isValidSignature(uint8 v, bytes32 r, bytes32 s) internal returns (address) {
+    address _address = ecrecover(msgHash, v, r, s);
+    require (_address == controller, InvalidController());
+
+    bytes32 signatureHash = keccak256(abi.encode([uint256(r), uint256(s), uint256(v)]));
+    require (!usedSignatures[signatureHash], SignatureAlreadyUsed());
+
+    usedSignatures[signatureHash] = true;
+
+    return _address;
+}
+```
+
+The `changeController` function takes the `v`, `r` and `s` values of the signature
+and the new controller address as parameters. It calls the `_isValidSignature`
+function to check if the signature is valid and if the signer is the current
+controller. If the signature is valid, it sets the `controller` variable to the
+`newController` address and emits the `ControllerChanged` event.
+
+The `_isValidSignature` function uses the `ecrecover` function to recover the
+address of the signer from the `msgHash`, `v`, `r` and `s` values. It checks if
+the recovered address is equal to the `controller` address. If it is not, it
+reverts with the `InvalidController()` error. If the recovered address is equal
+to the `controller` address, it checks if the signature has already been used
+by checking the `usedSignatures` mapping. If it has, it reverts with the
+`SignatureAlreadyUsed()` error. If the signature has not been used, it sets the
+`usedSignatures` mapping to true for the signature hash and returns the recovered
+address.
+
+Question is: How do we become the controller of the contract without deploying
+a new instance of the `ECLocker` contract?
+
+Signature malleability is the answer. The `ecrecover` function allows us to
+recover the address of the signer from the `msgHash`, `v`, `r` and `s` values.
+The contract uses no protection against signature malleability, which means
+that we can create a signature that is valid for `msgHash` but has a different
+`v` and `s` value. To learn more, check out this [post](https://blog.varkiwi.com/2025/06/02/Signature-Malleability-in-Solidity.html).
+
+### The attack
+
+I inspected the contract creation on Etherscan. Just go to Etherscan or which
+other explorer is used for your network and check the internal transactions
+or events. I went for the events.
+
+Here are mine:
+![Events](/assets/images/ethernaut_impersonate_internal_transactions.png)
+
+The third one looks like a good fit for the `emit NewLock(address(newLock), lockCounter, block.timestamp, signature);`
+in the `deployNewLock` function. If that is true, the value
+`0x1932cb842d3e27f54f79f7be0289437381ba2410fdefbae36850bee9c41e3b91` is `r`,
+`0x78489c64a0db16c40ef986beccc8f069ad5041e5b992d76fe76bba057d9abff2` is `s`,
+and `0x1b` is `v`.
+
+Now, using the previous python script, time to flip `s` and `v` and we get:
+
+```
+r = 0x1932cb842d3e27f54f79f7be0289437381ba2410fdefbae36850bee9c41e3b91
+s = 0x87b7639b5f24e93bf106794133370f950d5e9b00f5b5c8cbd866a487529b814f
+v = 0x1c
+```
+
+To make my life easier, I copied the `ECLock` contract to remix, connected to
+MetaMask and loaded the contract by providing the address :)
+
+Next, I called the `changeController` function with the new values for the
+signature and the zero address as new controller  - et voila, anyone can open the lock now.
+
+You might be wondering why we set the controller to the zero address.
+
+`ecrecover` returns the zero address if the signature is invalid. If we set the
+controller to the zero address, we can call the `open` function with any invalid signature
+and it will return the zero address, which is equal to the controller address.
+
+Therefore, anyone can open the lock.
+
+### Learning
+
+The level teaches us about signature malleability and how it can be exploited.
+Be careful with using ecrecover without any security measurements.
