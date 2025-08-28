@@ -4,6 +4,14 @@ title: "zk-SNARKS Under the Hood - How They Work"
 tags: Ethereum Blockchain zk zkSnark Math Cryptography
 ---
 
+# zk-SNARKS Under the Hood - How They Work
+
+In this post, I'll take you on a journey to demystify zk-SNARKs – one of the
+most fascinating cryptographic innovations powering privacy and scalability in
+the blockchain ecosystem. As someone deeply interested in this technology
+myself, I want to share what I've learned about how these
+"zero-knowledge proofs" actually work beneath the surface.
+
 ## Table of contents
 
 1. [What is a zk-SNARK](#what-is-a-zk-snark)
@@ -14,14 +22,6 @@ tags: Ethereum Blockchain zk zkSnark Math Cryptography
 2. [Non-Interactive Zero-Knowledge of a Polynomial](#non-interactive-zero-knowledge-of-a-polynomial)
     1. [Proving Knowledge of a Polynomial](#proving-knowledge-of-a-polynomial)
 
-
-# zk-SNARKS Under the Hood - How They Work
-
-In this post, I'll take you on a journey to demystify zk-SNARKs – one of the
-most fascinating cryptographic innovations powering privacy and scalability in
-the blockchain ecosystem. As someone deeply interested in this technology
-myself, I want to share what I've learned about how these
-"zero-knowledge proofs" actually work beneath the surface.
 
 ## What is a zk-SNARK?<a name="what-is-a-zk-snark"></a>
 
