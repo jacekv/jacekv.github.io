@@ -21,6 +21,8 @@ myself, I want to share what I've learned about how these
     4. [Polynomial Equations recap](#polynomial-equations-recap)
 2. [Non-Interactive Zero-Knowledge of a Polynomial](#non-interactive-zero-knowledge-of-a-polynomial)
     1. [Proving Knowledge of a Polynomial](#proving-knowledge-of-a-polynomial)
+    2. [What does it mean to know a polynomial?](#what-does-it-mean-to-know-a-polynomial)
+    3. [Homomorphic Encryption](#homomorphic-encryption)
 
 
 ## What is a zk-SNARK?<a name="what-is-a-zk-snark"></a>
