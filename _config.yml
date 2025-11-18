@@ -39,6 +39,8 @@ titles_from_headings:
   strip_title: true
   collections: true
 
+math: true
+
 defaults:
   - scope:
       path: ""
