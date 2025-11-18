@@ -49,7 +49,7 @@ The zk-SNARK protocol involves two primary participants:
 * The Prover: Has some secret information and wants to convince others of a statement about that information
 * The Verifier: Wants to confirm the statement is true without learning the secret information
 
-For example, imagine the Prover wants to demonstrate: "I have more than 10,000 euros in
+For example, imagine the Prover wants to demonstrate: "I have more than 10,000 Euros in
 my bank account" without revealing the exact balance.
 The zk-SNARK allows the Verifier to be mathematically convinced of
 this statement's truth without seeing any bank details.
@@ -268,3 +268,306 @@ There is no enforcement of degree in the protocol. The prover can use a polynomi
 For example, if the prover claims to know a polynomial of degree 3, such that `x = 1` and `x = 2`, he can use a polynomial of degree 4 or higher which also satisfies the cofactors check.
 For example, the prover can use `p'(x) = (x - 1)(x - 2)(x - 3)(x - 4)` which is of degree 4 and also satisfies the cofactors check.
 The verifier has no way of knowing the degree of the polynomial used by the prover.
+
+#### How do we address these issues?
+
+To address these issues, we need to introduce cryptographic primitives. Issues 1 and Issue 2
+are possible, because the values are presented in cleartext, prover knows `r` and `t(r)`. To resolve
+those issues, we are going to use a cryptographic primitive that allows us to perform calculations on hidden values,
+namely homomorphic encryption.
+
+Let's get to it.
+
+## Homomorphic Encryption
+
+Homomorphic encryption allows to encrypt a value and perform operations on the encrypted value without revealing it.
+
+We are going to introduce a simple homomorphic encryption scheme, which allows us to perform addition and multiplication on encrypted values.
+
+### Simple Homomorphic Encryption Scheme
+
+The general idea is that we choose a base natural number `g`, e.g. `g=5`(the requirements for that number are out of scope for this post) and to encrypt a value `v`, we exponentiate `g` to the power of `v`:
+
+```math
+Enc(v) = g^v
+```
+
+If we would like to encrypt the value `v=3`, we would get:
+
+```math
+Enc(3) = 5^3 = 125
+```
+125 is the encrypted value of `3`. If we want to multiply this encrypted value by `2`, we raise the encrypted value to the power of `2`:
+
+```math
+Enc(3)^2 = (5^3)^2 = 5^{3+2} = 5^6
+```
+
+What does that mean: We just multiplied an unknown value (here `3`) by `2`, without decrypting it.
+
+We can also perform addition, by through multiplication. Let's say we want to add `2` to our secret value `3`:
+
+```math
+Enc(3) * Enc(2) = 5^3 * 5^2 = 5^{3+2} = 5^5
+```
+
+And we can also do subtraction, by dividing the encrypted values:
+
+```math
+Enc(3) / Enc(2) = 5^3 / 5^2 = 5^{3+2} = 5^1
+```
+
+One problem: The base `g=5` is public and it is easy to brute-force small values. To address this, we are going to perform the exponentiation in a finite field using modular arithmetic. In case you forgot, we are going to give a brief refresher on modular arithmetic.
+
+### Modular Arithmetic Refresher
+
+Modular arithmetic is a system of arithmetic for integers, where numbers "wrap around" upon reaching a certain value, called the modulus.
+
+For example, in modulo `7` arithmetic, the numbers wrap around after reaching `7`. So, `7 mod 7` is `0`,`8 mod 7` is `1`, `9 mod 7` is `2`, `15 mod 7` is `1`, and so on.
+It also works for negative numbers: `-1 mod 7` is `6`, `-2 mod 7` is `5`, etc.
+
+We can perform addition, subtraction, and multiplication in modular arithmetic as follows:
+* Addition: `(a + b) mod m`
+    * Example: `(5 + 4) mod 7 = 2` (since `9 mod 7 = 2`)
+* Subtraction: `(a - b) mod m`
+    * Example: `(5 - 4) mod 7 = 1` (since `1 mod 7 = 1`)
+* Multiplication: `(a * b) mod m`
+    * Example: `(5 * 4) mod 7 = 6` (since `20 mod 7 = 6`)
+* Exponentiation: `(a^b) mod m`
+    * Example: `(5^3) mod 7 = 6` (since `125 mod 7 = 6`)
+
+Were `a` and `b` are integers, and `m` is the modulus.
+It is important to note that the order of operations does not matter, e.g. we can perform addition before or after taking the modulus.
+
+Why is modular arithmetic helpful in our case?
+
+It turns out that if ew use modular arithmetic, having a result of an operation, it is non-trivial to go back to the original numbers because many different pairs of numbers can produce the same result when taken modulo `m`.
+
+```math
+\begin{align}
+5 + 7 &\equiv 5 \ (\text{mod}\ 7)\\
+3 * 4 &\equiv 5 \ (\text{mod}\ 7)\\
+5 * 1 &\equiv 5 \ (\text{mod}\ 7)\\
+\end{align}
+```
+
+Without the modulus, it is easy to determine the original numbers from the result.
+
+Let's see how this looks graphically for RSA encryption. RSA has the following formula for encryption and decryption:
+
+```math
+\begin{align}
+\text{Encryption: } c &\equiv m^e \ (\text{mod}\ n)\\
+\text{Decryption: } m &\equiv c^d \ (\text{mod}\ n)\\
+\end{align}
+```
+
+Where `m` is the plaintext message, `c` is the ciphertext, `e` is the public exponent, `d` is the private exponent, and `n` is the modulus.
+
+But let's see how it would look like without the modulus:
+
+```math
+\begin{align}
+\text{Encryption: } c &\equiv m^e \\
+\text{Decryption: } m &\equiv c^d \\
+\end{align}
+```
+
+Here a graphical representation of RSA encryption without and with modulus:
+
+![ERC20 Approve](/assets/images/ModularArithmetic.png)
+
+On the left side you can see the smooth curve of the function `y = x^e` (encryption), and on the right side you can see the scatter plot of the function `y = x^e mod n` (encryption with modulus). The smooth curve illustrates the clear relationship between `x` and `y`, making it easy to determine the original value of `x` from `y`.
+
+By adding the modulus, we get this "cloud of dots" on the right side, destroying the smoothness of the curve and making it difficult to determine the original value of `x` from `y`.
+
+### Homomorphic Encryption with Modular Arithmetic
+
+Let's revisit our simple homomorphic encryption scheme, but this time using modular arithmetic.
+
+```math
+Enc(v) = g^v \ (\text{mod}\ p)
+```
+
+Here some examples of operations on encrypted values using modular arithmetic:
+
+```math
+\begin{align}
+5^1 = 5 \ (\text{mod}\ p) \\
+5^2 = 4 \ (\text{mod}\ p) \\
+5^3 = 6 \ (\text{mod}\ p) \\
+5^5 = 3 \ (\text{mod}\ p) \\
+5^{11} = 3 \ (\text{mod}\ p) \\
+5^{17} = 3 \ (\text{mod}\ p) \\
+\end{align}
+```
+
+As you can see we even used different exponents, but the results are the same. In fact, if the modulo is large enough, it becomes computationally infeasible to determine the original value from the encrypted value. And this "hard" problem is what is used in today's cryptographic schemes to provide security.
+
+All the homomorphic properties we discussed earlier still hold, but now the operations are performed modulo `p`.
+
+```math
+\begin{align}
+Encryption: 5^3 \ (\text{mod}\ 7) = 6 \\
+Multiplication: (5^3)^2 = 5^{3*2} = 5^6 \ (\text{mod}\ 7) = 1 \\
+Addition: (5^3 * 5^2) = 5^{3+2} = 5^5 \ (\text{mod}\ 7) = 3 \\
+\end{align}
+```
+
+Modular division is a bit more complex, as it requires the concept of modular inverses, which is out of scope for this post.
+
+Side note: There are limitations to this homomorphic encryption scheme. While we can multiply an encrypted value by an unencrypted value, we cannot multiply two encrypted values together. This is because the result would not be in the form of `g^v`, which is required for decryption.
+
+Here the proof:
+```math
+\begin{align}
+Enc(a) = g^a \ (\text{mod}\ p) \\
+Enc(b) = g^b \ (\text{mod}\ p) \\
+Enc(a) * Enc(b) = g^a * g^b = g^{a+b} = Enc(a+b) \not = Enc(a*b) \ (\text{mod}\ p) \\
+\end{align}
+```
+
+### Encrypted polynomials
+
+Now that we have a homomorphic encryption scheme, we can use it to encrypt polynomials.
+
+An encrypted polynomial is simply a polynomial where the coefficients are encrypted using our homomorphic encryption scheme.
+Let's say we have the following polynomial:
+
+```math
+p(x) = x^3 - 3x^2 + 2x
+```
+
+We learned already, that to know a polynomial means to know its coefficients, here `1`, `-3`, and `2`.
+Because homomorphic encryption does not allow to exponentiate an encrypted value, we must be given encrypted values of powers of `x` from `1` to `3`: 
+
+```math
+Enc(x^1), Enc(x^2), Enc(x^3)
+```
+so that we can evaluate the encrypted polynomial as follows:
+
+```math
+\begin{align}
+E(x^3)^1 * E(x^2)^{-3} * E(x^1)^2 \\
+(g^{x^3})^1 * (g^{x^2})^{-3} * (g^{x^1})^2 \\
+g^{x^3} * g^{-3x^2} * g^{2x^1} \\
+g^{x^3 - 3x^2 + 2x} \\
+\end{align}
+```
+
+The result of such operations is, we have an encrypted evaluation of our polynomial at some unknown `x`.
+
+This is quite powerful mechanism. Let's update our polynomial knowledge proof protocol to use encrypted polynomials.
+
+1. Verifier samples a random value `r` which is secret
+2. Verifier calculates encryptions of `r` for all powers from `1` to `d`: `Enc(r^1), Enc(r^2), ..., Enc(r^d)` and sends them to the prover
+3. Verifier evaluates unencrypted target polynomial with `r`: `t = t(r)` (Verifier knows `p(x) = t(x) * h(x)`)
+4. Verifier sends encrypted powers to the prover
+5. Prover calculates polynomial `h(x) = p(x) / t(x)`
+6. Prover evaluates `E(p(r))` and `E(h(r))` using encrypted powers received from the verifier
+7. The resulting encrypted values `E(p(r))`, `E(h(r))` are provided to the verifier
+8. Verifier checks that `E(p(r)) = E(h(r))^t(r) = g^(t(r) * h(r))` and accepts the proof if the equality holds
+
+Let's see how this protocol works with `p(x) = x^3 − 3x^2 + 2x` and  `t(x) = (x - 1)(x - 2)`.
+
+#### Setup
+We know:
+```math
+p(x) = x^3 − 3x^2 + 2x \\
+t(x) = (x - 1)(x - 2) \\
+h(x) = \frac{p(x)}{t(x)} = x \\
+```
+And we use: `g = 2`, `p = 101`
+Therefore:
+```math
+Enc(v) = 2^v \ (\text{mod}\ 101) \\
+```
+
+#### Protocol Execution
+1. Verifier samples `r` random value `7`
+2. Verifier calculates encrypted powers:
+```math
+Enc(7^1) = 2^7 \ = 27 \ (\text{mod}\ 101) \\
+Enc(7^2) = 2^{49} \ = 50 \ (\text{mod}\ 101) \\
+Enc(7^3) = 2^{343} \ = 86 \ (\text{mod}\ 101) \\
+```
+3. Verifier forwards encrypted powers to the prover
+4. Prover calculates `h(x) = p(x) / t(x) = x`
+5. Prover evaluates encrypted polynomial `p(x)` at `r = 7` (prover does not know `r` in cleartext :!:):
+```math
+\begin{align}
+E(p(7)) & = E(7^3 - 3*7^2 + 2*7^1) \\
+& = E(7^3)^1 * E(7^2)^{-3} * E(7^1)^2 && \text{Prover received encrypted values } \\
+& = 86^1 * 50^{-3} * 27^2 \\
+& = 86 * 93 * 22 \\
+& = 14 \ (\text{mod}\ 101) \\
+\end{align}
+```
+Do not forget that:
+```math
+E(a) * E(b) = E(a + b) \ (\text{mod}\ p) \\
+E(a)^k = E(k * a) \ (\text{mod}\ p) \\
+E(a)^{-1} = E(-a) \ (\text{mod}\ p) \\
+```
+6. Prover evaluates encrypted polynomial `h(x)` at `r = 7`:
+```math
+\begin{align}
+E(h(7)) & = E(7) \\
+& = 27 \ (\text{mod}\ 101) \\
+\end{align}
+```
+7. Prover sends `E(p(7)) = 14` and `E(h(7)) = 27` to the verifier
+8. Verifier calculates `t(7) = (7 - 1)(7 - 2) = 30` and checks that:
+```math
+E(p(7)) \stackrel{?}{=} E(h(7))^{t(7)} = 27^{30} \equiv 14 \ (\text{mod}\ 101) \\
+```
+Since the equality holds, the verifier accepts the proof.
+
+Now, let's do it again, but this time the prover is cheating and uses a different polynomial.
+
+#### Cheating Prover Example
+
+Setup remains the same, besides the prover using `p'(x)=t(x)*(x+5)`, which is divisible by
+`t(x)` (so it has a clean cofactor). Steps 1 to 3 are the same as before.
+
+4. Cheating Prover uses `h'(x) = p'(x)/t(x) = x + 5` instead of `h(x) = x`
+5. Cheating Prover evaluates encrypted polynomial `p'(x) = x^3 + 2x^2 − 13x + 10` at `r = 7`:
+```math
+\begin{align}
+Enc(p'(r))=Enc(r^3)^1 * Enc(r^2)^2 * Enc(r)^{-13} * Enc(1)^{10} \equiv 87 \ (\text{mod}\ 101) \\
+\end{align} 
+```
+6. Cheating Prover evaluates encrypted polynomial `h'(x)` at `r = 7`:
+```math
+\begin{align}
+h'(r)= r + 5 = 7 + 5 = 12 \Rightarrow E(h'(r))=E(r) * Enc(1)^5=27 \cdot 2^{5}=27 \cdot 32 \equiv 56 \ (\text{mod}\ 101).
+\end{align}
+```
+7. Cheating Prover sends `E(p'(7)) = 87` and `E(h'(7)) = 56` to the verifier
+8. Verifier calculates `t(7) = (7 - 1)(7 - 2) = 30` and checks that:
+```math
+E(p'(7)) \stackrel{?}{=} E(h'(7))^{t(7)} (\text{mod}\ 101) \\
+87 \stackrel{?}{=} 56^{t(7)} (\text{mod}\ 101) \\
+87 \stackrel{?}{=} 56^{30} (\text{mod}\ 101) \\
+87 = 87 (\text{mod}\ 101) \\
+```
+Since the equality does hold, the verifier accepts the proof.
+
+That's the whole point of the cheat: with a single hidden point `r`, the prover can pick a different polynomial
+`p'(x)` (here still degree <= 3) that satisfies `p'(r) = t(r) * h'(r)`, where `h'(x)` is the cofactor of `p'(x)`.
+The check passes at that point, even though `p'(x) != p(x)`.
+
+### Addressing the Issues
+
+In the current protocol, we managed to address Issue 1 and Issue 2:
+1. Prover may not know the claimed polynomial `p(x)` at all
+    * Now the prover cannot come up with any polynomial, since the verifier sends encrypted powers of a secret random value
+2. Prover can construct any polynomial which has one shared point at `r` with `t(r) * h(r)`
+    * Now the prover cannot construct any polynomial, since the verifier sends encrypted powers of a secret random value
+
+However, we still have Issue 3: No enforcement of degree.
+3. No enforcement of degree 
+    * We still have no enforcement of degree. The prover can use a polynomial of higher degree which also satisfies the cofactors check.
+
+Wow, that was a lot of information to digest. In the next section, we will address Issue 3 and
+complete our polynomial knowledge proof protocol.
