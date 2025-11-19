@@ -68,25 +68,25 @@ For a zk-SNARK protocol to be valid and useful, it must satisfy three critical p
 
 I am sure that most of you learned about polynomial equations in school. Since polynomials form the mathematical backbone of many cryptographic systems, let's recap some of their key properties:
 
-* The **degree** of a polynomial is determined by its greatest exponent, in case for `f(x)`, then the exponent of `x`. For example: `f(x) = x^3 - 6*x^2 + 11*x - 6` -> greatest exponent is `3`, so the degree of the polynomial is `3`.
-* Two **distinct** polynomials of degree most `d` can intersect at no more than `d` points (intersection `f(x) = g(x)`).
+* The **degree** of a polynomial is determined by its greatest exponent, in case for $f(x)$, then the exponent of $x$. For example: $f(x) = x^3 - 6*x^2 + 11*x - 6$ -> greatest exponent is $3$, so the degree of the polynomial is $3$.
+* Two **distinct** polynomials of degree most $d$ can intersect at no more than $d$ points (intersection $f(x) = g(x)$).
 
 If a prover claims to know a polynomial, the verifier can easily verify that the prover indeed knows it, by
 
-1. Choosing a random value for `x` and calculating `f(x)` locally
-2. Asking the prover to calculate `f(x)` for the same value of `x` and return the result
+1. Choosing a random value for $x$ and calculating $f(x)$ locally
+2. Asking the prover to calculate $f(x)$ for the same value of $x$ and return the result
 3. Verify that local calculation matches the prover's result.
 
-We might ask ourselves: what are the chances that the prover could cheat by "accidentally" providing the correct value of `f(x)` without actually knowing the polynomial?
+We might ask ourselves: what are the chances that the prover could cheat by "accidentally" providing the correct value of $f(x)$ without actually knowing the polynomial?
 
 The answer is: the probability is negligibly small.
 
-Consider a field with range for x from `1` to `10^77`. If the prover knows a different polynomial `g(x)` of the same degree, then `f(x)` and `g(x)`
-can agree in at most `d` points (where `d` is the degree). Therefore, the number of points where evaluations differ is at least `10^77 - d`.
-The probability that a randomly chosen `x` accidentally "hits" any of the `d` shared points is at most `d / 10^77`, which is negligible for practical values of `d`.
+Consider a field with range for x from $1$ to $10^77$. If the prover knows a different polynomial $g(x)$ of the same degree, then $f(x)$ and $g(x)$
+can agree in at most $d$ points (where $d$ is the degree). Therefore, the number of points where evaluations differ is at least $10^77 - d$.
+The probability that a randomly chosen $x$ accidentally "hits" any of the $d$ shared points is at most $d / 10^77$, which is negligible for practical values of $d$.
 
-The number of points where evaluations are different is `10^77 - d` (where `d` number of intersections).
-Henceforth the probability that `x` accidentally 'hits' any of the `d` shared points is equal to `d / 10^77`, which is negligible.
+The number of points where evaluations are different is $10^77 - d$ (where $d$ number of intersections).
+Henceforth the probability that $x$ accidentally 'hits' any of the $d$ shared points is equal to $d / 10^77$, which is negligible.
 
 This polynomial verification protocol:
 
@@ -114,9 +114,9 @@ what it actually means to know a polynomial.
 ## What does it mean to know a polynomial?
 
 Most of the time you will see polynomials expressed in the form of:
-```math
+$$
 c_n*x^n + ... + c_1*x^1 + c_0*x^0
-```
+$$
 where `c_n` is the coefficient of the polynomial, `x` is the variable, and `n` is the degree of the polynomial.
 If someone claims to know a polynomial, what they really know is the coefficients of the polynomial.
 
@@ -128,48 +128,48 @@ You might be wondering how we got the mentioned polynomial for `x = 1` and `x = 
 The Fundamental Theorem of Algebra states that any polynomial can be factored into linear polynomials (a degree 1 polynomials representing a line), as long it is solvable.
 Which means that we can express any valid polynomial as a product of its factors:
 
-```math
+$$
 (x - a_0) * (x - a_1) * ... * (x - a_n) = 0
-```
+$$
 
 In the case where the prover might know `x^3 − 3*x^2 + 2*x = 0`, we assume that the third solution is `x = 0`:
-```math
+$$
 (x - 1) * (x - 2) * (x - 0) = 0
 => x^3 - 3x^2 + 2x = 0
-```
+$$
 
 Coming back to our example where a prover claims to know a polynomial of degree 3, such that `x = 1` and `x = 2`, we can express it as:
 
-```math
+$$
 (x - 1) * (x - 2) * (x - a_0) = 0
-```
+$$
 
 Where `a_0` is the third root of the polynomial.
 
 Now, if a prover wants to prove that he knows a polynomial of degree 3, such that `x = 1` and `x = 2`
 without disclosing the polynomial itself, he needs to prove that his polynomial is the multiplication of
 the cofactors `t(x) = (x - 1)(x - 2)` and some arbitrary polynomial `h(x)`, i.e.:
-```math
+$$
 p(x) = t(x) * h(x)
-```
+$$
 
 Where `h(x)` is equal to `x - 0` in our example.
 
 How does the prover prover that he knows the `p(x)` polynomial without disclosing it?
 
 By division without a remainder:
-```math
+$$
 h(x) + r(x) = \frac{p(x)}{t(x)}
-```
+$$
 where `r(x) = 0` since the requirement is 'division without a remainder'.
 
 In our example
-```math
+$$
 h(x) = \frac{(x^3 - 3x^2 + 2x)}{((x - 1)(x - 2))}
-```
-```math
+$$
+$$
 h(x) = x 
-```
+$$
 and the remainder is `0`.
 
 The prover can prove that he knows the polynomial `p(x)` by proving that the division of `p(x)` by `t(x)` has no remainder.
@@ -190,7 +190,7 @@ If the prover uses a different polynomial `p'(x) = 2x^3 - 3x^2 + 2x`, then
 the prover gets `h(x) = p'(x) / t(x) = 2x + 3 + 7x - 6`, were `7x - 6` is the remainder of the division
 `p(x) / t(x)`. Since
 
-```math
+$$
 \begin{align}
 p(x) &= t(x) * h(x) + r(x)\ (\because r(x) \neq 0)\\
 p(x) &= t(x) * h(x) + r(x) \\
@@ -199,7 +199,7 @@ p(x) &= t(x) * h(x) + r(x) \\
 h(x) &= \frac{p(x)}{t(x)} - \frac{r(x)}{t(x)} \\
 h(x) &= 2x + 3 + \frac{7x - 6}{t(x)} \\
 \end{align}
-```
+$$
 the prover will have to divide the remainder by `t(r)` in order to evaluate `h(r)`.
 
 Due to the random selection of `r` by the verifier, there is a low probability that
@@ -209,11 +209,11 @@ check that `p(r)` and `h(r)` are integers. In case they are not integers, the
 verifier will reject the proof.
 
 Example:
-```math
+$$
 h(23) = (2×23 + 3) + (7×23 - 6)/t(23) \\
 h(23) = 49 + 155/462  \\
 h(23) = 49 + 0.3355   \\
-```
+$$
 `h(23)` is not an integer, so the verifier rejects the proof.
 
 But this puts a constraint on the allowed polynomials, since the coefficients of the polynomial
@@ -291,34 +291,34 @@ We are going to introduce a simple homomorphic encryption scheme, which allows u
 
 The general idea is that we choose a base natural number `g`, e.g. `g=5`(the requirements for that number are out of scope for this post) and to encrypt a value `v`, we exponentiate `g` to the power of `v`:
 
-```math
+$$
 Enc(v) = g^v
-```
+$$
 
 If we would like to encrypt the value `v=3`, we would get:
 
-```math
+$$
 Enc(3) = 5^3 = 125
-```
+$$
 125 is the encrypted value of `3`. If we want to multiply this encrypted value by `2`, we raise the encrypted value to the power of `2`:
 
-```math
+$$
 Enc(3)^2 = (5^3)^2 = 5^{3+2} = 5^6
-```
+$$
 
 What does that mean: We just multiplied an unknown value (here `3`) by `2`, without decrypting it.
 
 We can also perform addition, by through multiplication. Let's say we want to add `2` to our secret value `3`:
 
-```math
+$$
 Enc(3) * Enc(2) = 5^3 * 5^2 = 5^{3+2} = 5^5
-```
+$$
 
 And we can also do subtraction, by dividing the encrypted values:
 
-```math
+$$
 Enc(3) / Enc(2) = 5^3 / 5^2 = 5^{3+2} = 5^1
-```
+$$
 
 One problem: The base `g=5` is public and it is easy to brute-force small values. To address this, we are going to perform the exponentiation in a finite field using modular arithmetic. In case you forgot, we are going to give a brief refresher on modular arithmetic.
 
@@ -346,35 +346,35 @@ Why is modular arithmetic helpful in our case?
 
 It turns out that if ew use modular arithmetic, having a result of an operation, it is non-trivial to go back to the original numbers because many different pairs of numbers can produce the same result when taken modulo `m`.
 
-```math
+$$
 \begin{align}
 5 + 7 &\equiv 5 \ (\text{mod}\ 7)\\
 3 * 4 &\equiv 5 \ (\text{mod}\ 7)\\
 5 * 1 &\equiv 5 \ (\text{mod}\ 7)\\
 \end{align}
-```
+$$
 
 Without the modulus, it is easy to determine the original numbers from the result.
 
 Let's see how this looks graphically for RSA encryption. RSA has the following formula for encryption and decryption:
 
-```math
+$$
 \begin{align}
 \text{Encryption: } c &\equiv m^e \ (\text{mod}\ n)\\
 \text{Decryption: } m &\equiv c^d \ (\text{mod}\ n)\\
 \end{align}
-```
+$$
 
 Where `m` is the plaintext message, `c` is the ciphertext, `e` is the public exponent, `d` is the private exponent, and `n` is the modulus.
 
 But let's see how it would look like without the modulus:
 
-```math
+$$
 \begin{align}
 \text{Encryption: } c &\equiv m^e \\
 \text{Decryption: } m &\equiv c^d \\
 \end{align}
-```
+$$
 
 Here a graphical representation of RSA encryption without and with modulus:
 
@@ -388,13 +388,13 @@ By adding the modulus, we get this "cloud of dots" on the right side, destroying
 
 Let's revisit our simple homomorphic encryption scheme, but this time using modular arithmetic.
 
-```math
+$$
 Enc(v) = g^v \ (\text{mod}\ p)
-```
+$$
 
 Here some examples of operations on encrypted values using modular arithmetic:
 
-```math
+$$
 \begin{align}
 5^1 = 5 \ (\text{mod}\ p) \\
 5^2 = 4 \ (\text{mod}\ p) \\
@@ -403,32 +403,32 @@ Here some examples of operations on encrypted values using modular arithmetic:
 5^{11} = 3 \ (\text{mod}\ p) \\
 5^{17} = 3 \ (\text{mod}\ p) \\
 \end{align}
-```
+$$
 
 As you can see we even used different exponents, but the results are the same. In fact, if the modulo is large enough, it becomes computationally infeasible to determine the original value from the encrypted value. And this "hard" problem is what is used in today's cryptographic schemes to provide security.
 
 All the homomorphic properties we discussed earlier still hold, but now the operations are performed modulo `p`.
 
-```math
+$$
 \begin{align}
 Encryption: 5^3 \ (\text{mod}\ 7) = 6 \\
 Multiplication: (5^3)^2 = 5^{3*2} = 5^6 \ (\text{mod}\ 7) = 1 \\
 Addition: (5^3 * 5^2) = 5^{3+2} = 5^5 \ (\text{mod}\ 7) = 3 \\
 \end{align}
-```
+$$
 
 Modular division is a bit more complex, as it requires the concept of modular inverses, which is out of scope for this post.
 
 Side note: There are limitations to this homomorphic encryption scheme. While we can multiply an encrypted value by an unencrypted value, we cannot multiply two encrypted values together. This is because the result would not be in the form of `g^v`, which is required for decryption.
 
 Here the proof:
-```math
+$$
 \begin{align}
 Enc(a) = g^a \ (\text{mod}\ p) \\
 Enc(b) = g^b \ (\text{mod}\ p) \\
 Enc(a) * Enc(b) = g^a * g^b = g^{a+b} = Enc(a+b) \not = Enc(a*b) \ (\text{mod}\ p) \\
 \end{align}
-```
+$$
 
 ### Encrypted polynomials
 
@@ -437,26 +437,26 @@ Now that we have a homomorphic encryption scheme, we can use it to encrypt polyn
 An encrypted polynomial is simply a polynomial where the coefficients are encrypted using our homomorphic encryption scheme.
 Let's say we have the following polynomial:
 
-```math
+$$
 p(x) = x^3 - 3x^2 + 2x
-```
+$$
 
 We learned already, that to know a polynomial means to know its coefficients, here `1`, `-3`, and `2`.
 Because homomorphic encryption does not allow to exponentiate an encrypted value, we must be given encrypted values of powers of `x` from `1` to `3`: 
 
-```math
+$$
 Enc(x^1), Enc(x^2), Enc(x^3)
-```
+$$
 so that we can evaluate the encrypted polynomial as follows:
 
-```math
+$$
 \begin{align}
 E(x^3)^1 * E(x^2)^{-3} * E(x^1)^2 \\
 (g^{x^3})^1 * (g^{x^2})^{-3} * (g^{x^1})^2 \\
 g^{x^3} * g^{-3x^2} * g^{2x^1} \\
 g^{x^3 - 3x^2 + 2x} \\
 \end{align}
-```
+$$
 
 The result of such operations is, we have an encrypted evaluation of our polynomial at some unknown `x`.
 
@@ -471,33 +471,33 @@ This is quite powerful mechanism. Let's update our polynomial knowledge proof pr
 7. The resulting encrypted values `E(p(r))`, `E(h(r))` are provided to the verifier
 8. Verifier checks that `E(p(r)) = E(h(r))^t(r) = g^(t(r) * h(r))` and accepts the proof if the equality holds
 
-Let's see how this protocol works with `p(x) = x^3 − 3x^2 + 2x` and  `t(x) = (x - 1)(x - 2)`.
+Let's see how this protocol works with $p(x) = x^3 − 3x^2 + 2x$ and  $t(x) = (x - 1)(x - 2)$.
 
 #### Setup
 We know:
-```math
+$$
 p(x) = x^3 − 3x^2 + 2x \\
 t(x) = (x - 1)(x - 2) \\
 h(x) = \frac{p(x)}{t(x)} = x \\
-```
-And we use: `g = 2`, `p = 101`
+$$
+And we use: $g = 2$, $p = 101$
 Therefore:
-```math
+$$
 Enc(v) = 2^v \ (\text{mod}\ 101) \\
-```
+$$
 
 #### Protocol Execution
-1. Verifier samples `r` random value `7`
+1. Verifier samples $r$ random value $7$
 2. Verifier calculates encrypted powers:
-```math
+$$
 Enc(7^1) = 2^7 \ = 27 \ (\text{mod}\ 101) \\
 Enc(7^2) = 2^{49} \ = 50 \ (\text{mod}\ 101) \\
 Enc(7^3) = 2^{343} \ = 86 \ (\text{mod}\ 101) \\
-```
+$$
 3. Verifier forwards encrypted powers to the prover
-4. Prover calculates `h(x) = p(x) / t(x) = x`
-5. Prover evaluates encrypted polynomial `p(x)` at `r = 7` (prover does not know `r` in cleartext :!:):
-```math
+4. Prover calculates $h(x) = p(x) / t(x) = x$
+5. Prover evaluates encrypted polynomial $p(x)$ at $r = 7$ (prover does not know $r$ in cleartext :!:):
+$$
 \begin{align}
 E(p(7)) & = E(7^3 - 3*7^2 + 2*7^1) \\
 & = E(7^3)^1 * E(7^2)^{-3} * E(7^1)^2 && \text{Prover received encrypted values } \\
@@ -505,42 +505,41 @@ E(p(7)) & = E(7^3 - 3*7^2 + 2*7^1) \\
 & = 86 * 93 * 22 \\
 & = 14 \ (\text{mod}\ 101) \\
 \end{align}
-```
+$$
 Do not forget that:
-```math
+$$
 E(a) * E(b) = E(a + b) \ (\text{mod}\ p) \\
 E(a)^k = E(k * a) \ (\text{mod}\ p) \\
 E(a)^{-1} = E(-a) \ (\text{mod}\ p) \\
-```
+$$
 6. Prover evaluates encrypted polynomial `h(x)` at `r = 7`:
-```math
+$$
 \begin{align}
 E(h(7)) & = E(7) \\
 & = 27 \ (\text{mod}\ 101) \\
 \end{align}
-```
-7. Prover sends `E(p(7)) = 14` and `E(h(7)) = 27` to the verifier
-8. Verifier calculates `t(7) = (7 - 1)(7 - 2) = 30` and checks that:
-```math
+$$
+7. Prover sends $E(p(7)) = 14$ and $E(h(7)) = 27$ to the verifier
+8. Verifier calculates $t(7) = (7 - 1)(7 - 2) = 30$ and checks that:
+$$
 E(p(7)) \stackrel{?}{=} E(h(7))^{t(7)} = 27^{30} \equiv 14 \ (\text{mod}\ 101) \\
-```
+$$
 Since the equality holds, the verifier accepts the proof.
 
 Now, let's do it again, but this time the prover is cheating and uses a different polynomial.
 
 #### Cheating Prover Example
 
-Setup remains the same, besides the prover using `p'(x)=t(x)*(x+5)`, which is divisible by
-`t(x)` (so it has a clean cofactor). Steps 1 to 3 are the same as before.
+Setup remains the same, besides the prover using $p'(x)=t(x)*(x+5)$, which is divisible by
+$t(x)$ (so it has a clean cofactor). Steps 1 to 3 are the same as before.
 
 4. Cheating Prover uses $h'(x) = p'(x)/t(x) = x + 5$ instead of $h(x) = x$
 5. Cheating Prover evaluates encrypted polynomial $p'(x) = x^3 + 2x^2 − 13x + 10$ at $r = 7$:
-
-$$
-\begin{align}
-Enc(p'(r))=Enc(r^3)^1 * Enc(r^2)^2 * Enc(r)^{-13} * Enc(1)^{10} \equiv 87 \ (\text{mod}\ 101) \\
-\end{align} 
-$$
+    $$
+    \begin{align}
+    Enc(p'(r))=Enc(r^3)^1 * Enc(r^2)^2 * Enc(r)^{-13} * Enc(1)^{10} \equiv 87 \ (\text{mod}\ 101) \\
+    \end{align} 
+    $$
 
 6. Cheating Prover evaluates encrypted polynomial $h'(x)$ at $r = 7$:
 
