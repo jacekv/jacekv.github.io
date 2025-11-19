@@ -31,6 +31,7 @@ theme: "minima"
 math: true
 
 kramdown:
+  input: GFM
   math_engine: mathjax
   syntax_highlighter_opts:
     disable: true
