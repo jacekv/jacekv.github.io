@@ -191,14 +191,14 @@ the prover gets `h(x) = p'(x) / t(x) = 2x + 3 + 7x - 6`, were `7x - 6` is the re
 `p(x) / t(x)`. Since
 
 $$
-\begin{align}
+\begin{aligned}
 p(x) &= t(x) * h(x) + r(x)\ (\because r(x) \neq 0)\\
 p(x) &= t(x) * h(x) + r(x) \\
 \frac{p(x)}{t(x)} &= h(x) + \frac{r(x)}{t(x)} \\
 \frac{p(x)}{t(x)} - \frac{r(x)}{t(x)} &= h(x) \\
 h(x) &= \frac{p(x)}{t(x)} - \frac{r(x)}{t(x)} \\
 h(x) &= 2x + 3 + \frac{7x - 6}{t(x)} \\
-\end{align}
+\end{aligned}
 $$
 the prover will have to divide the remainder by `t(r)` in order to evaluate `h(r)`.
 
@@ -347,11 +347,11 @@ Why is modular arithmetic helpful in our case?
 It turns out that if ew use modular arithmetic, having a result of an operation, it is non-trivial to go back to the original numbers because many different pairs of numbers can produce the same result when taken modulo `m`.
 
 $$
-\begin{align}
+\begin{aligned}
 5 + 7 &\equiv 5 \ (\text{mod}\ 7)\\
 3 * 4 &\equiv 5 \ (\text{mod}\ 7)\\
 5 * 1 &\equiv 5 \ (\text{mod}\ 7)\\
-\end{align}
+\end{aligned}
 $$
 
 Without the modulus, it is easy to determine the original numbers from the result.
@@ -359,10 +359,10 @@ Without the modulus, it is easy to determine the original numbers from the resul
 Let's see how this looks graphically for RSA encryption. RSA has the following formula for encryption and decryption:
 
 $$
-\begin{align}
+\begin{aligned}
 \text{Encryption: } c &\equiv m^e \ (\text{mod}\ n)\\
 \text{Decryption: } m &\equiv c^d \ (\text{mod}\ n)\\
-\end{align}
+\end{aligned}
 $$
 
 Where `m` is the plaintext message, `c` is the ciphertext, `e` is the public exponent, `d` is the private exponent, and `n` is the modulus.
@@ -370,10 +370,10 @@ Where `m` is the plaintext message, `c` is the ciphertext, `e` is the public exp
 But let's see how it would look like without the modulus:
 
 $$
-\begin{align}
+\begin{aligned}
 \text{Encryption: } c &\equiv m^e \\
 \text{Decryption: } m &\equiv c^d \\
-\end{align}
+\end{aligned}
 $$
 
 Here a graphical representation of RSA encryption without and with modulus:
@@ -395,14 +395,14 @@ $$
 Here some examples of operations on encrypted values using modular arithmetic:
 
 $$
-\begin{align}
-5^1 = 5 \ (\text{mod}\ p) \\
-5^2 = 4 \ (\text{mod}\ p) \\
-5^3 = 6 \ (\text{mod}\ p) \\
-5^5 = 3 \ (\text{mod}\ p) \\
-5^{11} = 3 \ (\text{mod}\ p) \\
-5^{17} = 3 \ (\text{mod}\ p) \\
-\end{align}
+\begin{aligned}
+5^1 &= 5 \ (\text{mod}\ p) \\
+5^2 &= 4 \ (\text{mod}\ p) \\
+5^3 &= 6 \ (\text{mod}\ p) \\
+5^5 &= 3 \ (\text{mod}\ p) \\
+5^{11} &= 3 \ (\text{mod}\ p) \\
+5^{17} &= 3 \ (\text{mod}\ p) \\
+\end{aligned}
 $$
 
 As you can see we even used different exponents, but the results are the same. In fact, if the modulo is large enough, it becomes computationally infeasible to determine the original value from the encrypted value. And this "hard" problem is what is used in today's cryptographic schemes to provide security.
@@ -410,11 +410,11 @@ As you can see we even used different exponents, but the results are the same. I
 All the homomorphic properties we discussed earlier still hold, but now the operations are performed modulo `p`.
 
 $$
-\begin{align}
+\begin{aligned}
 Encryption: 5^3 \ (\text{mod}\ 7) = 6 \\
 Multiplication: (5^3)^2 = 5^{3*2} = 5^6 \ (\text{mod}\ 7) = 1 \\
 Addition: (5^3 * 5^2) = 5^{3+2} = 5^5 \ (\text{mod}\ 7) = 3 \\
-\end{align}
+\end{aligned}
 $$
 
 Modular division is a bit more complex, as it requires the concept of modular inverses, which is out of scope for this post.
@@ -423,11 +423,11 @@ Side note: There are limitations to this homomorphic encryption scheme. While we
 
 Here the proof:
 $$
-\begin{align}
-Enc(a) = g^a \ (\text{mod}\ p) \\
-Enc(b) = g^b \ (\text{mod}\ p) \\
-Enc(a) * Enc(b) = g^a * g^b = g^{a+b} = Enc(a+b) \not = Enc(a*b) \ (\text{mod}\ p) \\
-\end{align}
+\begin{aligned}
+Enc(a) &= g^a \ (\text{mod}\ p) \\
+Enc(b) &= g^b \ (\text{mod}\ p) \\
+Enc(a) * Enc(b) &= g^a * g^b = g^{a+b} = Enc(a+b) \not = Enc(a*b) \ (\text{mod}\ p) \\
+\end{aligned}
 $$
 
 ### Encrypted polynomials
@@ -450,12 +450,12 @@ $$
 so that we can evaluate the encrypted polynomial as follows:
 
 $$
-\begin{align}
+\begin{aligned}
 E(x^3)^1 * E(x^2)^{-3} * E(x^1)^2 \\
 (g^{x^3})^1 * (g^{x^2})^{-3} * (g^{x^1})^2 \\
 g^{x^3} * g^{-3x^2} * g^{2x^1} \\
 g^{x^3 - 3x^2 + 2x} \\
-\end{align}
+\end{aligned}
 $$
 
 The result of such operations is, we have an encrypted evaluation of our polynomial at some unknown `x`.
@@ -478,9 +478,9 @@ We know:
 
 $$
 \begin{aligned}
-p(x) = x^3 − 3x^2 + 2x \\
-t(x) = (x - 1)(x - 2) \\
-h(x) = \frac{p(x)}{t(x)} = x \\
+p(x) &= x^3 − 3x^2 + 2x \\
+t(x) &= (x - 1)(x - 2) \\
+h(x) &= \frac{p(x)}{t(x)} = x \\
 \end{aligned}
 $$
 
@@ -494,49 +494,53 @@ $$
 #### Protocol Execution
 1. Verifier samples $r$ random value $7$
 2. Verifier calculates encrypted powers:
-$$
-\begin{aligned}
-Enc(7^1) = 2^7 \ = 27 \ (\text{mod}\ 101) \\
-Enc(7^2) = 2^{49} \ = 50 \ (\text{mod}\ 101) \\
-Enc(7^3) = 2^{343} \ = 86 \ (\text{mod}\ 101) \\
-\end{aligned}
-$$
+
+    $$
+    \begin{aligned}
+    Enc(7^1) = 2^7 \ = 27 \ (\text{mod}\ 101) \\
+    Enc(7^2) = 2^{49} \ = 50 \ (\text{mod}\ 101) \\
+    Enc(7^3) = 2^{343} \ = 86 \ (\text{mod}\ 101) \\
+    \end{aligned}
+    $$
+
 3. Verifier forwards encrypted powers to the prover
 4. Prover calculates $h(x) = p(x) / t(x) = x$
 5. Prover evaluates encrypted polynomial $p(x)$ at $r = 7$ (prover does not know $r$ in cleartext :!:):
-$$
-\begin{aligned}
-E(p(7)) & = E(7^3 - 3*7^2 + 2*7^1) \\
-& = E(7^3)^1 * E(7^2)^{-3} * E(7^1)^2 && \text{Prover received encrypted values } \\
-& = 86^1 * 50^{-3} * 27^2 \\
-& = 86 * 93 * 22 \\
-& = 14 \ (\text{mod}\ 101) \\
-\end{aligned}
-$$
+    $$
+    \begin{aligned}
+    E(p(7)) & = E(7^3 - 3*7^2 + 2*7^1) \\
+    & = E(7^3)^1 * E(7^2)^{-3} * E(7^1)^2 && \text{Prover received encrypted values } \\
+    & = 86^1 * 50^{-3} * 27^2 \\
+    & = 86 * 93 * 22 \\
+    & = 14 \ (\text{mod}\ 101) \\
+    \end{aligned}
+    $$
 
-Do not forget that:
+    Do not forget that:
 
-$$
-\begin{aligned}
-E(a) * E(b) = E(a + b) \ (\text{mod}\ p) \\
-E(a)^k = E(k * a) \ (\text{mod}\ p) \\
-E(a)^{-1} = E(-a) \ (\text{mod}\ p) \\
-\end{aligned}
-$$
+    $$
+    \begin{aligned}
+    E(a) * E(b) &= E(a + b) \ (\text{mod}\ p) \\
+    E(a)^k &= E(k * a) \ (\text{mod}\ p) \\
+    E(a)^{-1} &= E(-a) \ (\text{mod}\ p) \\
+    \end{aligned}
+    $$
 
 6. Prover evaluates encrypted polynomial `h(x)` at `r = 7`:
-$$
-\begin{aligned}
-E(h(7)) & = E(7) \\
-& = 27 \ (\text{mod}\ 101) \\
-\end{aligned}
-$$
+    $$
+    \begin{aligned}
+    E(h(7)) & = E(7) \\
+    & = 27 \ (\text{mod}\ 101) \\
+    \end{aligned}
+    $$
 
 7. Prover sends $E(p(7)) = 14$ and $E(h(7)) = 27$ to the verifier
 8. Verifier calculates $t(7) = (7 - 1)(7 - 2) = 30$ and checks that:
-$$
-E(p(7)) \stackrel{?}{=} E(h(7))^{t(7)} = 27^{30} \equiv 14 \ (\text{mod}\ 101) \\
-$$
+
+    $$
+    E(p(7)) \stackrel{?}{=} E(h(7))^{t(7)} = 27^{30} \equiv 14 \ (\text{mod}\ 101) \\
+    $$
+
 Since the equality holds, the verifier accepts the proof.
 
 Now, let's do it again, but this time the prover is cheating and uses a different polynomial.
@@ -549,17 +553,17 @@ $t(x)$ (so it has a clean cofactor). Steps 1 to 3 are the same as before.
 4. Cheating Prover uses $h'(x) = p'(x)/t(x) = x + 5$ instead of $h(x) = x$
 5. Cheating Prover evaluates encrypted polynomial $p'(x) = x^3 + 2x^2 − 13x + 10$ at $r = 7$:
     $$
-    \begin{align}
+    \begin{aligned}
     Enc(p'(r))=Enc(r^3)^1 * Enc(r^2)^2 * Enc(r)^{-13} * Enc(1)^{10} \equiv 87 \ (\text{mod}\ 101) \\
-    \end{align} 
+    \end{aligned} 
     $$
 
 6. Cheating Prover evaluates encrypted polynomial $h'(x)$ at $r = 7$:
 
 $$
-\begin{align}
+\begin{aligned}
 h'(r)= r + 5 = 7 + 5 = 12 \Rightarrow E(h'(r))=E(r) * Enc(1)^5=27 \cdot 2^{5}=27 \cdot 32 \equiv 56 \ (\text{mod}\ 101).
-\end{align}
+\end{aligned}
 $$
 
 7. Cheating Prover sends $E(p'(7)) = 87$ and $E(h'(7)) = 56$ to the verifier
