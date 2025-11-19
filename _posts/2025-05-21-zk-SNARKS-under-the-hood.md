@@ -549,10 +549,12 @@ h'(r)= r + 5 = 7 + 5 = 12 \Rightarrow E(h'(r))=E(r) * Enc(1)^5=27 \cdot 2^{5}=27
 8. Verifier calculates `t(7) = (7 - 1)(7 - 2) = 30` and checks that:
 
 $$
+\begin{align}
 E(p'(7)) \stackrel{?}{=} E(h'(7))^{t(7)} (\text{mod}\ 101) \\
 87 \stackrel{?}{=} 56^{t(7)} (\text{mod}\ 101) \\
 87 \stackrel{?}{=} 56^{30} (\text{mod}\ 101) \\
 87 = 87 (\text{mod}\ 101) \\
+\end{align}
 $$
 
 Since the equality does hold, the verifier accepts the proof.
