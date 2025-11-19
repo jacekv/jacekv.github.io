@@ -494,7 +494,6 @@ $$
 #### Protocol Execution
 1. Verifier samples $r$ random value $7$
 2. Verifier calculates encrypted powers:
-
 $$
 \begin{aligned}
 Enc(7^1) = 2^7 \ = 27 \ (\text{mod}\ 101) \\
@@ -502,18 +501,17 @@ Enc(7^2) = 2^{49} \ = 50 \ (\text{mod}\ 101) \\
 Enc(7^3) = 2^{343} \ = 86 \ (\text{mod}\ 101) \\
 \end{aligned}
 $$
-
 3. Verifier forwards encrypted powers to the prover
 4. Prover calculates $h(x) = p(x) / t(x) = x$
 5. Prover evaluates encrypted polynomial $p(x)$ at $r = 7$ (prover does not know $r$ in cleartext :!:):
 $$
-\begin{align}
+\begin{aligned}
 E(p(7)) & = E(7^3 - 3*7^2 + 2*7^1) \\
 & = E(7^3)^1 * E(7^2)^{-3} * E(7^1)^2 && \text{Prover received encrypted values } \\
 & = 86^1 * 50^{-3} * 27^2 \\
 & = 86 * 93 * 22 \\
 & = 14 \ (\text{mod}\ 101) \\
-\end{align}
+\end{aligned}
 $$
 
 Do not forget that:
