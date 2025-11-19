@@ -526,7 +526,8 @@ $$
     \end{aligned}
     $$
 
-6. Prover evaluates encrypted polynomial `h(x)` at `r = 7`:
+6. Prover evaluates encrypted polynomial $h(x)$ at $r = 7$:
+
     $$
     \begin{aligned}
     E(h(7)) & = E(7) \\
