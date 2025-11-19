@@ -533,21 +533,25 @@ Now, let's do it again, but this time the prover is cheating and uses a differen
 Setup remains the same, besides the prover using `p'(x)=t(x)*(x+5)`, which is divisible by
 `t(x)` (so it has a clean cofactor). Steps 1 to 3 are the same as before.
 
-4. Cheating Prover uses `h'(x) = p'(x)/t(x) = x + 5` instead of `h(x) = x`
-5. Cheating Prover evaluates encrypted polynomial `p'(x) = x^3 + 2x^2 − 13x + 10` at `r = 7`:
-```math
+4. Cheating Prover uses $h'(x) = p'(x)/t(x) = x + 5$ instead of $h(x) = x$
+5. Cheating Prover evaluates encrypted polynomial $p'(x) = x^3 + 2x^2 − 13x + 10$ at $r = 7$:
+
+$$
 \begin{align}
 Enc(p'(r))=Enc(r^3)^1 * Enc(r^2)^2 * Enc(r)^{-13} * Enc(1)^{10} \equiv 87 \ (\text{mod}\ 101) \\
 \end{align} 
-```
-6. Cheating Prover evaluates encrypted polynomial `h'(x)` at `r = 7`:
-```math
+$$
+
+6. Cheating Prover evaluates encrypted polynomial $h'(x)$ at $r = 7$:
+
+$$
 \begin{align}
 h'(r)= r + 5 = 7 + 5 = 12 \Rightarrow E(h'(r))=E(r) * Enc(1)^5=27 \cdot 2^{5}=27 \cdot 32 \equiv 56 \ (\text{mod}\ 101).
 \end{align}
-```
-7. Cheating Prover sends `E(p'(7)) = 87` and `E(h'(7)) = 56` to the verifier
-8. Verifier calculates `t(7) = (7 - 1)(7 - 2) = 30` and checks that:
+$$
+
+7. Cheating Prover sends $E(p'(7)) = 87$ and $E(h'(7)) = 56$ to the verifier
+8. Verifier calculates $t(7) = (7 - 1)(7 - 2) = 30$ and checks that:
 
 $$
 \begin{aligned}
