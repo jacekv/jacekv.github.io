@@ -477,9 +477,11 @@ Let's see how this protocol works with $p(x) = x^3 − 3x^2 + 2x$ and  $t(x) = (
 We know:
 
 $$
+\begin{aligned}
 p(x) = x^3 − 3x^2 + 2x \\
 t(x) = (x - 1)(x - 2) \\
 h(x) = \frac{p(x)}{t(x)} = x \\
+\end{aligned}
 $$
 
 And we use: $g = 2$, $p = 101$
