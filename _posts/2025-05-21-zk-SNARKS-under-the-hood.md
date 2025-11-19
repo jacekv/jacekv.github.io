@@ -2,6 +2,7 @@
 layout: post
 title: "zk-SNARKS Under the Hood - How They Work"
 tags: Ethereum Blockchain zk zkSnark Math Cryptography
+math: true
 ---
 
 # zk-SNARKS Under the Hood - How They Work
