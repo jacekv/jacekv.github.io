@@ -548,12 +548,14 @@ h'(r)= r + 5 = 7 + 5 = 12 \Rightarrow E(h'(r))=E(r) * Enc(1)^5=27 \cdot 2^{5}=27
 7. Cheating Prover sends `E(p'(7)) = 87` and `E(h'(7)) = 56` to the verifier
 8. Verifier calculates `t(7) = (7 - 1)(7 - 2) = 30` and checks that:
 
+$$ E(p'(7)) \stackrel{?}{=} E(h'(7))^{t(7)} (\text{mod}\ 101) $$
+
     $$
     \begin{aligned}
     E(p'(7)) \stackrel{?}{=} E(h'(7))^{t(7)} (\text{mod}\ 101) \\
     87 \stackrel{?}{=} 56^{t(7)} (\text{mod}\ 101) \\
     87 \stackrel{?}{=} 56^{30} (\text{mod}\ 101) \\
-    87 = 87 (\text{mod}\ 101) \\
+    87 = 87 (\text{mod}\ 101)
     \end{aligned}
     $$
 
