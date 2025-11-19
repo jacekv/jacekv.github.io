@@ -1,0 +1,20 @@
+{% comment %}
+This file extends Minima’s head.html, adding MathJax support.
+{% endcomment %}
+{% include head.html %}
+
+{% if page.math or site.math %}
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [["\\(", "\\)"], ["$", "$"]],
+      displayMath: [["$$", "$$"], ["\\[", "\\]"]],
+      processEscapes: true
+    },
+    svg: { fontCache: "global" }
+  };
+</script>
+<script id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+</script>
+{% endif %}

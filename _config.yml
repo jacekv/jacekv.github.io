@@ -28,7 +28,10 @@ google_analytics: G-C6WHVK3HWM
 #########################################################################################
 theme: "minima"
 
+math: true
+
 kramdown:
+  math_engine: mathjax
   syntax_highlighter_opts:
     disable: true
     
