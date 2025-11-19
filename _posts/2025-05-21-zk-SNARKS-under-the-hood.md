@@ -419,7 +419,7 @@ $$
 
 Modular division is a bit more complex, as it requires the concept of modular inverses, which is out of scope for this post.
 
-Side note: There are limitations to this homomorphic encryption scheme. While we can multiply an encrypted value by an unencrypted value, we cannot multiply two encrypted values together. This is because the result would not be in the form of `g^v`, which is required for decryption.
+Side note: There are limitations to this homomorphic encryption scheme. While we can multiply an encrypted value by an unencrypted value, we cannot multiply two encrypted values together. This is because the result would not be in the form of $g^v$, which is required for decryption.
 
 Here the proof:
 $$
@@ -441,8 +441,8 @@ $$
 p(x) = x^3 - 3x^2 + 2x
 $$
 
-We learned already, that to know a polynomial means to know its coefficients, here `1`, `-3`, and `2`.
-Because homomorphic encryption does not allow to exponentiate an encrypted value, we must be given encrypted values of powers of `x` from `1` to `3`: 
+We learned already, that to know a polynomial means to know its coefficients, here $1$, $-3$, and $2$.
+Because homomorphic encryption does not allow to exponentiate an encrypted value, we must be given encrypted values of powers of $x$ from $1$ to $3$: 
 
 $$
 Enc(x^1), Enc(x^2), Enc(x^3)
@@ -462,14 +462,14 @@ The result of such operations is, we have an encrypted evaluation of our polynom
 
 This is quite powerful mechanism. Let's update our polynomial knowledge proof protocol to use encrypted polynomials.
 
-1. Verifier samples a random value `r` which is secret
-2. Verifier calculates encryptions of `r` for all powers from `1` to `d`: `Enc(r^1), Enc(r^2), ..., Enc(r^d)` and sends them to the prover
-3. Verifier evaluates unencrypted target polynomial with `r`: `t = t(r)` (Verifier knows `p(x) = t(x) * h(x)`)
+1. Verifier samples a random value $r$ which is secret
+2. Verifier calculates encryptions of $r$ for all powers from $1$ to $d$: $Enc(r^1), Enc(r^2), ..., Enc(r^d)$ and sends them to the prover
+3. Verifier evaluates unencrypted target polynomial with $r$: $t = t(r)$ (Verifier knows $p(x) = t(x) * h(x)$)
 4. Verifier sends encrypted powers to the prover
-5. Prover calculates polynomial `h(x) = p(x) / t(x)`
-6. Prover evaluates `E(p(r))` and `E(h(r))` using encrypted powers received from the verifier
-7. The resulting encrypted values `E(p(r))`, `E(h(r))` are provided to the verifier
-8. Verifier checks that `E(p(r)) = E(h(r))^t(r) = g^(t(r) * h(r))` and accepts the proof if the equality holds
+5. Prover calculates polynomial $h(x) = p(x) / t(x)$
+6. Prover evaluates $E(p(r))$ and $E(h(r))$ using encrypted powers received from the verifier
+7. The resulting encrypted values $E(p(r))$, $E(h(r))$ are provided to the verifier
+8. Verifier checks that $E(p(r)) = E(h(r))^{t(r)} = g^{t(r) * h(r)}$ and accepts the proof if the equality holds
 
 Let's see how this protocol works with $p(x) = x^3 − 3x^2 + 2x$ and  $t(x) = (x - 1)(x - 2)$.
 
@@ -560,29 +560,29 @@ $t(x)$ (so it has a clean cofactor). Steps 1 to 3 are the same as before.
 
 6. Cheating Prover evaluates encrypted polynomial $h'(x)$ at $r = 7$:
 
-$$
-\begin{aligned}
-h'(r)= r + 5 = 7 + 5 = 12 \Rightarrow E(h'(r))=E(r) * Enc(1)^5=27 \cdot 2^{5}=27 \cdot 32 \equiv 56 \ (\text{mod}\ 101).
-\end{aligned}
-$$
+    $$
+    \begin{aligned}
+    h'(r)= r + 5 = 7 + 5 = 12 \Rightarrow E(h'(r))=E(r) * Enc(1)^5=27 \cdot 2^{5}=27 \cdot 32 \equiv 56 \ (\text{mod}\ 101).
+    \end{aligned}
+    $$
 
 7. Cheating Prover sends $E(p'(7)) = 87$ and $E(h'(7)) = 56$ to the verifier
 8. Verifier calculates $t(7) = (7 - 1)(7 - 2) = 30$ and checks that:
 
-$$
-\begin{aligned}
-E(p'(7)) \stackrel{?}{=} E(h'(7))^{t(7)} (\text{mod}\ 101) \\
-87 \stackrel{?}{=} 56^{t(7)} (\text{mod}\ 101) \\
-87 \stackrel{?}{=} 56^{30} (\text{mod}\ 101) \\
-87 = 87 (\text{mod}\ 101)
-\end{aligned}
-$$
+    $$
+    \begin{aligned}
+    E(p'(7)) \stackrel{?}{=} E(h'(7))^{t(7)} (\text{mod}\ 101) \\
+    87 \stackrel{?}{=} 56^{t(7)} (\text{mod}\ 101) \\
+    87 \stackrel{?}{=} 56^{30} (\text{mod}\ 101) \\
+    87 = 87 (\text{mod}\ 101)
+    \end{aligned}
+    $$
 
 Since the equality does hold, the verifier accepts the proof.
 
-That's the whole point of the cheat: with a single hidden point `r`, the prover can pick a different polynomial
-`p'(x)` (here still degree <= 3) that satisfies `p'(r) = t(r) * h'(r)`, where `h'(x)` is the cofactor of `p'(x)`.
-The check passes at that point, even though `p'(x) != p(x)`.
+That's the whole point of the cheat: with a single hidden point $r$, the prover can pick a different polynomial
+$p'(x)$ (here still degree <= 3) that satisfies $p'(r) = t(r) * h'(r)$, where $h'(x)$ is the cofactor of $p'(x)$.
+The check passes at that point, even though $p'(x) \neq p(x)$.
 
 ### Addressing the Issues
 
