@@ -475,13 +475,16 @@ Let's see how this protocol works with $p(x) = x^3 − 3x^2 + 2x$ and  $t(x) = (
 
 #### Setup
 We know:
+
 $$
 p(x) = x^3 − 3x^2 + 2x \\
 t(x) = (x - 1)(x - 2) \\
 h(x) = \frac{p(x)}{t(x)} = x \\
 $$
+
 And we use: $g = 2$, $p = 101$
 Therefore:
+
 $$
 Enc(v) = 2^v \ (\text{mod}\ 101) \\
 $$
@@ -489,11 +492,15 @@ $$
 #### Protocol Execution
 1. Verifier samples $r$ random value $7$
 2. Verifier calculates encrypted powers:
+
 $$
+\begin{aligned}
 Enc(7^1) = 2^7 \ = 27 \ (\text{mod}\ 101) \\
 Enc(7^2) = 2^{49} \ = 50 \ (\text{mod}\ 101) \\
 Enc(7^3) = 2^{343} \ = 86 \ (\text{mod}\ 101) \\
+\end{aligned}
 $$
+
 3. Verifier forwards encrypted powers to the prover
 4. Prover calculates $h(x) = p(x) / t(x) = x$
 5. Prover evaluates encrypted polynomial $p(x)$ at $r = 7$ (prover does not know $r$ in cleartext :!:):
@@ -506,19 +513,25 @@ E(p(7)) & = E(7^3 - 3*7^2 + 2*7^1) \\
 & = 14 \ (\text{mod}\ 101) \\
 \end{align}
 $$
+
 Do not forget that:
+
 $$
+\begin{aligned}
 E(a) * E(b) = E(a + b) \ (\text{mod}\ p) \\
 E(a)^k = E(k * a) \ (\text{mod}\ p) \\
 E(a)^{-1} = E(-a) \ (\text{mod}\ p) \\
+\end{aligned}
 $$
+
 6. Prover evaluates encrypted polynomial `h(x)` at `r = 7`:
 $$
-\begin{align}
+\begin{aligned}
 E(h(7)) & = E(7) \\
 & = 27 \ (\text{mod}\ 101) \\
-\end{align}
+\end{aligned}
 $$
+
 7. Prover sends $E(p(7)) = 14$ and $E(h(7)) = 27$ to the verifier
 8. Verifier calculates $t(7) = (7 - 1)(7 - 2) = 30$ and checks that:
 $$
