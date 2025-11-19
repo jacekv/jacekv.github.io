@@ -28,13 +28,14 @@ google_analytics: G-C6WHVK3HWM
 #########################################################################################
 theme: "minima"
 
-math: true
+markdown: kramdown
+# math: true
 
-kramdown:
-  input: GFM
-  math_engine: mathjax
-  syntax_highlighter_opts:
-    disable: true
+# kramdown:
+#   input: GFM
+#   math_engine: mathjax
+#   syntax_highlighter_opts:
+#     disable: true
     
 plugins:
   - jekyll-sitemap
