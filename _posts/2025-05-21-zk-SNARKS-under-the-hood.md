@@ -68,7 +68,7 @@ For a zk-SNARK protocol to be valid and useful, it must satisfy three critical p
 
 I am sure that most of you learned about polynomial equations in school. Since polynomials form the mathematical backbone of many cryptographic systems, let's recap some of their key properties:
 
-* The **degree** of a polynomial is determined by its greatest exponent, in case for $f(x)$, then the exponent of $x$. For example: $f(x) = x^3 - 6*x^2 + 11*x - 6$ -> greatest exponent is $3$, so the degree of the polynomial is $3$.
+* The **degree** of a polynomial is determined by its greatest exponent, in case for $f(x)$, then the exponent of $x$. For example: $f(x) = x^3 - 6*x^2 + 11*x - 6 $ -> greatest exponent is $3$, so the degree of the polynomial is $3$.
 * Two **distinct** polynomials of degree most $d$ can intersect at no more than $d$ points (intersection $f(x) = g(x)$).
 
 If a prover claims to know a polynomial, the verifier can easily verify that the prover indeed knows it, by
@@ -81,12 +81,12 @@ We might ask ourselves: what are the chances that the prover could cheat by "acc
 
 The answer is: the probability is negligibly small.
 
-Consider a field with range for x from $1$ to $10^77$. If the prover knows a different polynomial $g(x)$ of the same degree, then $f(x)$ and $g(x)$
-can agree in at most $d$ points (where $d$ is the degree). Therefore, the number of points where evaluations differ is at least $10^77 - d$.
-The probability that a randomly chosen $x$ accidentally "hits" any of the $d$ shared points is at most $d / 10^77$, which is negligible for practical values of $d$.
+Consider a field with range for x from $1$ to $10^{77}$. If the prover knows a different polynomial $g(x)$ of the same degree, then $f(x)$ and $g(x)$
+can agree in at most $d$ points (where $d$ is the degree). Therefore, the number of points where evaluations differ is at least $10^{77} - d$.
+The probability that a randomly chosen $x$ accidentally "hits" any of the $d$ shared points is at most $d / 10^{77}$, which is negligible for practical values of $d$.
 
-The number of points where evaluations are different is $10^77 - d$ (where $d$ number of intersections).
-Henceforth the probability that $x$ accidentally 'hits' any of the $d$ shared points is equal to $d / 10^77$, which is negligible.
+The number of points where evaluations are different is $10^{77} - d$ (where $d$ number of intersections).
+Henceforth the probability that $x$ accidentally 'hits' any of the $d$ shared points is equal to $d / 10^{77}$, which is negligible.
 
 This polynomial verification protocol:
 
@@ -117,13 +117,13 @@ Most of the time you will see polynomials expressed in the form of:
 $$
 c_n*x^n + ... + c_1*x^1 + c_0*x^0
 $$
-where `c_n` is the coefficient of the polynomial, `x` is the variable, and `n` is the degree of the polynomial.
+where $c_n$ is the coefficient of the polynomial, $x$ is the variable, and $n$ is the degree of the polynomial.
 If someone claims to know a polynomial, what they really know is the coefficients of the polynomial.
 
-For example if a prover claims to know a polynomial of degree 3, such that `x = 1` and `x = 2` 
-they could know `x^3 − 3*x^2 + 2*x = 0`. For `x = 1` we get `1 − 9 + 2 = 0` and for `x = 2` we get `8 − 12 + 4 = 0`.
+For example if a prover claims to know a polynomial of degree 3, such that $x = 1$ and $x = 2$ 
+they could know $x^3 − 3*x^2 + 2*x = 0$. For $x = 1$ we get $1 − 9 + 2 = 0$ and for $x = 2$ we get $8 − 12 + 4 = 0$.
 
-You might be wondering how we got the mentioned polynomial for `x = 1` and `x = 2`: factorization.
+You might be wondering how we got the mentioned polynomial for $x = 1$ and $x = 2$: factorization.
 
 The Fundamental Theorem of Algebra states that any polynomial can be factored into linear polynomials (a degree 1 polynomials representing a line), as long it is solvable.
 Which means that we can express any valid polynomial as a product of its factors:
@@ -132,36 +132,36 @@ $$
 (x - a_0) * (x - a_1) * ... * (x - a_n) = 0
 $$
 
-In the case where the prover might know `x^3 − 3*x^2 + 2*x = 0`, we assume that the third solution is `x = 0`:
+In the case where the prover might know $x^3 − 3*x^2 + 2*x = 0$, we assume that the third solution is $x = 0$:
 $$
 (x - 1) * (x - 2) * (x - 0) = 0
 => x^3 - 3x^2 + 2x = 0
 $$
 
-Coming back to our example where a prover claims to know a polynomial of degree 3, such that `x = 1` and `x = 2`, we can express it as:
+Coming back to our example where a prover claims to know a polynomial of degree 3, such that $x = 1$ and $x = 2$, we can express it as:
 
 $$
 (x - 1) * (x - 2) * (x - a_0) = 0
 $$
 
-Where `a_0` is the third root of the polynomial.
+Where $a_0$ is the third root of the polynomial.
 
-Now, if a prover wants to prove that he knows a polynomial of degree 3, such that `x = 1` and `x = 2`
+Now, if a prover wants to prove that he knows a polynomial of degree 3, such that $x = 1$ and $x = 2$
 without disclosing the polynomial itself, he needs to prove that his polynomial is the multiplication of
-the cofactors `t(x) = (x - 1)(x - 2)` and some arbitrary polynomial `h(x)`, i.e.:
+the cofactors $t(x) = (x - 1)(x - 2)$ and some arbitrary polynomial $h(x)$, i.e.:
 $$
 p(x) = t(x) * h(x)
 $$
 
-Where `h(x)` is equal to `x - 0` in our example.
+Where $h(x)$ is equal to $x - 0$ in our example.
 
-How does the prover prover that he knows the `p(x)` polynomial without disclosing it?
+How does the prover prover that he knows the $p(x)$ polynomial without disclosing it?
 
 By division without a remainder:
 $$
 h(x) + r(x) = \frac{p(x)}{t(x)}
 $$
-where `r(x) = 0` since the requirement is 'division without a remainder'.
+where $r(x) = 0$ since the requirement is 'division without a remainder'.
 
 In our example
 $$
@@ -170,25 +170,25 @@ $$
 $$
 h(x) = x 
 $$
-and the remainder is `0`.
+and the remainder is $0$.
 
-The prover can prove that he knows the polynomial `p(x)` by proving that the division of `p(x)` by `t(x)` has no remainder.
+The prover can prove that he knows the polynomial $p(x)$ by proving that the division of $p(x)$ by $t(x)$ has no remainder.
 
 Putting this together into a protocol:
 
-1. Verifier samples a random value `r`, calculates `t = t(r)` and gives `r` to the prover
-2. Prover calculates `h(x) = p(x) / t(x)` and evaluates `p(r)` and `h(r)`; the resulting values `p`, `h` are provided to the verifier
-3. Verifier checks that `p(r) = t(r) * h(r)` and accepts the proof if the equality holds
+1. Verifier samples a random value $r$, calculates $t = t(r)$ and gives $r$ to the prover
+2. Prover calculates $h(x) = p(x) / t(x)$ and evaluates $p(r)$ and $h(r)$; the resulting values $p$, $h$ are provided to the verifier
+3. Verifier checks that $p(r) = t(r) * h(r)$ and accepts the proof if the equality holds
 
-Let's see how this protocol works with `p(x) = x^3 − 3x^2 + 2x` and  `t(x) = (x - 1)(x - 2)`.
+Let's see how this protocol works with $p(x) = x^3 − 3x^2 + 2x$ and  $t(x) = (x - 1)(x - 2)$.
 
-1. Verifier samples r random value `23`, calculates `t = t(23) = (23 - 1)(23 - 2) = 462` and gives `r = 23` to the prover
-2. Prover calculates `h(x) = p(x) / t(x) = x`, evaluates `p = p(23) = 10626` and `h = h(23) = 23` and provide `p, h` to the verifier
-3. Verifier then checks that `p = t * h: 10626 = 462 * 23`, which is true, so the verifier accepts the proof.
+1. Verifier samples r random value $23$, calculates $t = t(23) = (23 - 1)(23 - 2) = 462$ and gives $r = 23$ to the prover
+2. Prover calculates $h(x) = p(x) / t(x) = x$, evaluates $p = p(23) = 10626$ and $h = h(23) = 23$ and provide $p, h$ to the verifier
+3. Verifier then checks that $p = t * h: 10626 = 462 * 23$, which is true, so the verifier accepts the proof.
 
-If the prover uses a different polynomial `p'(x) = 2x^3 - 3x^2 + 2x`, then 
-the prover gets `h(x) = p'(x) / t(x) = 2x + 3 + 7x - 6`, were `7x - 6` is the remainder of the division
-`p(x) / t(x)`. Since
+If the prover uses a different polynomial $p'(x) = 2x^3 - 3x^2 + 2x$, then 
+the prover gets $h(x) = p'(x) / t(x) = 2x + 3 + 7x - 6$, were $7x - 6$ is the remainder of the division
+$p(x) / t(x)$. Since
 
 $$
 \begin{aligned}
@@ -200,12 +200,12 @@ h(x) &= \frac{p(x)}{t(x)} - \frac{r(x)}{t(x)} \\
 h(x) &= 2x + 3 + \frac{7x - 6}{t(x)} \\
 \end{aligned}
 $$
-the prover will have to divide the remainder by `t(r)` in order to evaluate `h(r)`.
+the prover will have to divide the remainder by $t(r)$ in order to evaluate $h(r)$.
 
-Due to the random selection of `r` by the verifier, there is a low probability that
-the evaluation of the remainder will be evenly divisible by `t(x)`. To catch
+Due to the random selection of $r$ by the verifier, there is a low probability that
+the evaluation of the remainder will be evenly divisible by $t(x)$. To catch
 the cases where it is not evenly divisible, the verifier will have to additionally
-check that `p(r)` and `h(r)` are integers. In case they are not integers, the
+check that $p(r)$ and $h(r)$ are integers. In case they are not integers, the
 verifier will reject the proof.
 
 Example:
@@ -214,7 +214,7 @@ h(23) = (2×23 + 3) + (7×23 - 6)/t(23) \\
 h(23) = 49 + 155/462  \\
 h(23) = 49 + 0.3355   \\
 $$
-`h(23)` is not an integer, so the verifier rejects the proof.
+$h(23)$ is not an integer, so the verifier rejects the proof.
 
 But this puts a constraint on the allowed polynomials, since the coefficients of the polynomial
 must be integers. If the coefficients are not integers, the verifier has no way of 
@@ -230,18 +230,18 @@ so this already gives us some form of zero-knowledge and succinctness.
 
 Nonetheless, there are multiple issues with this construction:
 
-1.  Prover may not know the claimed polynomial `p(x)` at all. He can calculate
-`t = t(r)`, select a random number `h` and set `p = t * h`, which will be accepted by the verifier
+1.  Prover may not know the claimed polynomial $p(x)$ at all. He can calculate
+$t = t(r)$, select a random number $h$ and set $p = t * h$, which will be accepted by the verifier
 as valid, since the equation holds.
-2. Because prover knows the random point `x = r`, he can construct any polynomial which has
-one shared point at `r` with `t(r) * h(r)`.
+2. Because prover knows the random point $x = r$, he can construct any polynomial which has
+one shared point at $r$ with $t(r) * h(r)$.
 3. In the original statement, prover claims to know a polynomial of a particular degree. In
 the current protocol there is no enforcement of degree. Hence prover can cheat by using a
 polynomial of higher degree which also satisfies the cofactors check.
 
 Let's dig a bit deeper why these even exist.
 
-#### Issue 1: Prover may not know the claimed polynomial `p(x)` at all
+#### Issue 1: Prover may not know the claimed polynomial $p(x)$ at all
 
 At the beginning of the section, we have the following statement:
 
@@ -256,26 +256,26 @@ and
 > (x - a_0) * (x - a_1) * ... * (x - a_n) = 0
 > ```
 
-I guess it is rather easy to spot, that the prover can simply select any random `h`
-and set `p(x) = t(x) * h(x)`.
+I guess it is rather easy to spot, that the prover can simply select any random $h$
+and set $p(x) = t(x) * h(x)$.
 
-#### Issue 2: Prover can construct any polynomial which has one shared point at `r` with `t(r) * h(r)`
+#### Issue 2: Prover can construct any polynomial which has one shared point at $r$ with $t(r) * h(r)$
 
-The prover can come up with a polynomial `p'(x)`, such that `p'(r) = t(r) * h(r)` without knowing the polynomial `p(x)`.
+The prover can come up with a polynomial $p'(x)$, such that $p'(r) = t(r) * h(r)$ without knowing the polynomial $p(x)$.
 
-After receiving the value `r`, the prover comes up with a polynomial `p'(x)`, calculates `p'(r)`, and then calculates `h'(r) = p'(r) / t(r)`. The prover then sends `p'(r)` and `h'(r)` to the verifier, which will accept the proof.
+After receiving the value $r$, the prover comes up with a polynomial $p'(x)$, calculates $p'(r)$, and then calculates $h'(r) = p'(r) / t(r)$. The prover then sends $p'(r)$ and $h'(r)$ to the verifier, which will accept the proof.
 
 #### Issue 3: No enforcement of degree
 
 There is no enforcement of degree in the protocol. The prover can use a polynomial of higher degree which also satisfies the cofactors check.
-For example, if the prover claims to know a polynomial of degree 3, such that `x = 1` and `x = 2`, he can use a polynomial of degree 4 or higher which also satisfies the cofactors check.
-For example, the prover can use `p'(x) = (x - 1)(x - 2)(x - 3)(x - 4)` which is of degree 4 and also satisfies the cofactors check.
+For example, if the prover claims to know a polynomial of degree 3, such that $x = 1$ and $x = 2$, he can use a polynomial of degree 4 or higher which also satisfies the cofactors check.
+For example, the prover can use $p'(x) = (x - 1)(x - 2)(x - 3)(x - 4)$ which is of degree 4 and also satisfies the cofactors check.
 The verifier has no way of knowing the degree of the polynomial used by the prover.
 
 #### How do we address these issues?
 
 To address these issues, we need to introduce cryptographic primitives. Issues 1 and Issue 2
-are possible, because the values are presented in cleartext, prover knows `r` and `t(r)`. To resolve
+are possible, because the values are presented in cleartext, prover knows $r$ and $t(r)$. To resolve
 those issues, we are going to use a cryptographic primitive that allows us to perform calculations on hidden values,
 namely homomorphic encryption.
 
@@ -289,27 +289,26 @@ We are going to introduce a simple homomorphic encryption scheme, which allows u
 
 ### Simple Homomorphic Encryption Scheme
 
-The general idea is that we choose a base natural number `g`, e.g. `g=5`(the requirements for that number are out of scope for this post) and to encrypt a value `v`, we exponentiate `g` to the power of `v`:
+The general idea is that we choose a base natural number $g$, e.g. $g=5$ (the requirements for that number are out of scope for this post) and to encrypt a value $v$, we exponentiate $g$ to the power of $v$:
 
 $$
 Enc(v) = g^v
 $$
 
-If we would like to encrypt the value `v=3`, we would get:
+If we would like to encrypt the value $v=3$, we would get:
 
 $$
 Enc(3) = 5^3 = 125
 $$
-125 is the encrypted value of `3`. If we want to multiply this encrypted value by `2`, we raise the encrypted value to the power of `2`:
+125 is the encrypted value of $3$. If we want to multiply this encrypted value by $2$, we raise the encrypted value to the power of $2$:
 
 $$
 Enc(3)^2 = (5^3)^2 = 5^{3+2} = 5^6
 $$
 
-What does that mean: We just multiplied an unknown value (here `3`) by `2`, without decrypting it.
+What does that mean: We just multiplied an unknown value (here $3$) by $2$, without decrypting it.
 
-We can also perform addition, by through multiplication. Let's say we want to add `2` to our secret value `3`:
-
+We can also perform addition, by through multiplication. Let's say we want to add $2$ to our secret value $3$:
 $$
 Enc(3) * Enc(2) = 5^3 * 5^2 = 5^{3+2} = 5^5
 $$
@@ -320,26 +319,26 @@ $$
 Enc(3) / Enc(2) = 5^3 / 5^2 = 5^{3+2} = 5^1
 $$
 
-One problem: The base `g=5` is public and it is easy to brute-force small values. To address this, we are going to perform the exponentiation in a finite field using modular arithmetic. In case you forgot, we are going to give a brief refresher on modular arithmetic.
+One problem: The base $g=5$ is public and it is easy to brute-force small values. To address this, we are going to perform the exponentiation in a finite field using modular arithmetic. In case you forgot, we are going to give a brief refresher on modular arithmetic.
 
 ### Modular Arithmetic Refresher
 
 Modular arithmetic is a system of arithmetic for integers, where numbers "wrap around" upon reaching a certain value, called the modulus.
 
-For example, in modulo `7` arithmetic, the numbers wrap around after reaching `7`. So, `7 mod 7` is `0`,`8 mod 7` is `1`, `9 mod 7` is `2`, `15 mod 7` is `1`, and so on.
-It also works for negative numbers: `-1 mod 7` is `6`, `-2 mod 7` is `5`, etc.
+For example, in modulo $7$ arithmetic, the numbers wrap around after reaching $7$. So, $7 \mod 7$ is $0$, $8 \mod 7$ is $1$, $9 \mod 7$ is $2$, $15 \mod 7$ is $1$, and so on.
+It also works for negative numbers: $-1 \mod 7$ is $6$, $-2 \mod 7$ is $5$, etc.
 
 We can perform addition, subtraction, and multiplication in modular arithmetic as follows:
-* Addition: `(a + b) mod m`
-    * Example: `(5 + 4) mod 7 = 2` (since `9 mod 7 = 2`)
-* Subtraction: `(a - b) mod m`
-    * Example: `(5 - 4) mod 7 = 1` (since `1 mod 7 = 1`)
-* Multiplication: `(a * b) mod m`
-    * Example: `(5 * 4) mod 7 = 6` (since `20 mod 7 = 6`)
-* Exponentiation: `(a^b) mod m`
-    * Example: `(5^3) mod 7 = 6` (since `125 mod 7 = 6`)
+* Addition: $(a + b) \mod m$
+    * Example: $(5 + 4) \mod 7 = 2$ (since $9 \mod 7 = 2$)
+* Subtraction: $(a - b) \mod m$
+    * Example: $(5 - 4) \mod 7 = 1$ (since $1 \mod 7 = 1$)
+* Multiplication: $(a * b) \mod m$
+    * Example: $(5 * 4) \mod 7 = 6$ (since $20 \mod 7 = 6$)
+* Exponentiation: $(a^b) \mod m$
+    * Example: $(5^3) \mod 7 = 6$ (since $125 \mod 7 = 6$)
 
-Were `a` and `b` are integers, and `m` is the modulus.
+Were $a$ and $b$ are integers, and $m$ is the modulus.
 It is important to note that the order of operations does not matter, e.g. we can perform addition before or after taking the modulus.
 
 Why is modular arithmetic helpful in our case?
