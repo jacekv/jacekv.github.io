@@ -121,7 +121,11 @@ where $c_n$ is the coefficient of the polynomial, $x$ is the variable, and $n$ i
 If someone claims to know a polynomial, what they really know is the coefficients of the polynomial.
 
 For example if a prover claims to know a polynomial of degree 3, such that $x = 1$ and $x = 2$ 
-they could know $x^3 − 3*x^2 + 2*x = 0$. For $x = 1$ we get $1 − 9 + 2 = 0$ and for $x = 2$ we get $8 − 12 + 4 = 0$.
+they could know
+$$x^3 − 3*x^2 + 2*x = 0
+$$.
+
+For $x = 1$ we get $1 − 9 + 2 = 0$ and for $x = 2$ we get $8 − 12 + 4 = 0$.
 
 You might be wondering how we got the mentioned polynomial for $x = 1$ and $x = 2$: factorization.
 
