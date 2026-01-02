@@ -123,9 +123,7 @@ If someone claims to know a polynomial, what they really know is the coefficient
 For example if a prover claims to know a polynomial of degree 3, such that $x = 1$ and $x = 2$ 
 they could know
 $$x^3 − 3*x^2 + 2*x = 0
-$$.
-
-For $x = 1$ we get $1 − 9 + 2 = 0$ and for $x = 2$ we get $8 − 12 + 4 = 0$.
+$$. For $x = 1$ we get $1 − 9 + 2 = 0$ and for $x = 2$ we get $8 − 12 + 4 = 0$.
 
 You might be wondering how we got the mentioned polynomial for $x = 1$ and $x = 2$: factorization.
 
@@ -136,7 +134,7 @@ $$
 (x - a_0) * (x - a_1) * ... * (x - a_n) = 0
 $$
 
-In the case where the prover might know $x^3 − 3*x^2 + 2*x = 0$, we assume that the third solution is $x = 0$:
+In the case where the prover might know $$x^3 − 3*x^2 + 2*x = 0$$, we assume that the third solution is $x = 0$:
 $$
 (x - 1) * (x - 2) * (x - 0) = 0
 => x^3 - 3x^2 + 2x = 0
