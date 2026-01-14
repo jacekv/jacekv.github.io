@@ -24,6 +24,19 @@ myself, I want to share what I've learned about how these
     1. [Proving Knowledge of a Polynomial](#proving-knowledge-of-a-polynomial)
     2. [What does it mean to know a polynomial?](#what-does-it-mean-to-know-a-polynomial)
     3. [Homomorphic Encryption](#homomorphic-encryption)
+        1. [Simple Homomorphic Encryption Scheme](#simple-homomorphic-encryption-scheme)
+        2. [Modular Arithmetic Refresher](#modular-arithmetic-refresher)
+        3. [Homomorphic Encryption with Modular Arithmetic](#homomorphic-encryption-with-modular-arithmetic)
+        4. [Encrypted polynomials](#encrypted-polynomials)
+    4. [Enforcing Polynomial Degree](#enforcing-polynomial-degree)
+        1. [Degree Bound Enforcement via the Knowledge of Exponent Assumption](#degree-bound-enforcement-via-the-knowledge-of-exponent-assumption)
+        2. [The Knowledge of Exponent Assumption (KEA)](#the-knowledge-of-exponent-assumption-kea)
+        3. [Integrating KEA into Our Protocol](#integrating-kea-into-our-protocol)
+        4. [The Small-Range Problem](#the-small-range-problem)
+        5. [Meaning of true zero‑knowledge](#meaning-of-true-zero-knowledge)
+        6. [Summary](#summary)
+
+
 
 
 ## What is a zk-SNARK?<a name="what-is-a-zk-snark"></a>
@@ -111,7 +124,7 @@ accepted is non-negligible anymore, which is not good.
 Therefore, will we have to address those issues. But before that, let's take a look at
 what it actually means to know a polynomial.
 
-## What does it mean to know a polynomial?
+## What does it mean to know a polynomial?<a name="what-does-it-mean-to-know-a-polynomial"></a>
 
 Most of the time you will see polynomials expressed in the form of:
 $$
@@ -283,13 +296,13 @@ namely homomorphic encryption.
 
 Let's get to it.
 
-## Homomorphic Encryption
+## Homomorphic Encryption<a name="homomorphic-encryption"></a>
 
 Homomorphic encryption allows to encrypt a value and perform operations on the encrypted value without revealing it.
 
 We are going to introduce a simple homomorphic encryption scheme, which allows us to perform addition and multiplication on encrypted values.
 
-### Simple Homomorphic Encryption Scheme
+### Simple Homomorphic Encryption Scheme<a name="simple-homomorphic-encryption-scheme"></a>
 
 The general idea is that we choose a base natural number $g$, e.g. $g=5$ (the requirements for that number are out of scope for this post) and to encrypt a value $v$, we exponentiate $g$ to the power of $v$:
 
@@ -305,7 +318,7 @@ $$
 125 is the encrypted value of $3$. If we want to multiply this encrypted value by $2$, we raise the encrypted value to the power of $2$:
 
 $$
-Enc(3)^2 = (5^3)^2 = 5^{3+2} = 5^6
+Enc(3)^2 = (5^3)^2 = 5^{3*2} = 5^6
 $$
 
 What does that mean: We just multiplied an unknown value (here $3$) by $2$, without decrypting it.
@@ -323,7 +336,7 @@ $$
 
 One problem: The base $g=5$ is public and it is easy to brute-force small values. To address this, we are going to perform the exponentiation in a finite field using modular arithmetic. In case you forgot, we are going to give a brief refresher on modular arithmetic.
 
-### Modular Arithmetic Refresher
+### Modular Arithmetic Refresher<a name="modular-arithmetic-refresher"></a>
 
 Modular arithmetic is a system of arithmetic for integers, where numbers "wrap around" upon reaching a certain value, called the modulus.
 
@@ -385,7 +398,7 @@ On the left side you can see the smooth curve of the function `y = x^e` (encrypt
 
 By adding the modulus, we get this "cloud of dots" on the right side, destroying the smoothness of the curve and making it difficult to determine the original value of `x` from `y`.
 
-### Homomorphic Encryption with Modular Arithmetic
+### Homomorphic Encryption with Modular Arithmetic<a name="homomorphic-encryption-with-modular-arithmetic"></a>
 
 Let's revisit our simple homomorphic encryption scheme, but this time using modular arithmetic.
 
@@ -431,9 +444,9 @@ Enc(a) * Enc(b) &= g^a * g^b = g^{a+b} = Enc(a+b) \not = Enc(a*b) \ (\text{mod}\
 \end{aligned}
 $$
 
-### Encrypted polynomials
+### Encrypted polynomials<a name="encrypted-polynomials"></a>
 
-Now that we have a homomorphic encryption scheme, we can use it to encrypt polynomials.
+Next, that we have a homomorphic encryption scheme, we can use it to encrypt polynomials.
 
 An encrypted polynomial is simply a polynomial where the coefficients are encrypted using our homomorphic encryption scheme.
 Let's say we have the following polynomial:
@@ -493,7 +506,7 @@ Enc(v) = 2^v \ (\text{mod}\ 101) \\
 $$
 
 #### Protocol Execution
-1. Verifier samples $r$ random value $7$
+1. Verifier samples $s$ random value $7$
 2. Verifier calculates encrypted powers:
 
     $$
@@ -506,7 +519,7 @@ $$
 
 3. Verifier forwards encrypted powers to the prover
 4. Prover calculates $h(x) = p(x) / t(x) = x$
-5. Prover evaluates encrypted polynomial $p(x)$ at $r = 7$ (prover does not know $r$ in cleartext :!:):
+5. Prover evaluates encrypted polynomial $p(x)$ at $s = 7$ (prover does not know $s$ in cleartext :!:):
     $$
     \begin{aligned}
     E(p(7)) & = E(7^3 - 3*7^2 + 2*7^1) \\
@@ -527,7 +540,7 @@ $$
     \end{aligned}
     $$
 
-6. Prover evaluates encrypted polynomial $h(x)$ at $r = 7$:
+6. Prover evaluates encrypted polynomial $h(x)$ at $s = 7$:
 
     $$
     \begin{aligned}
@@ -545,7 +558,7 @@ $$
 
 Since the equality holds, the verifier accepts the proof.
 
-Now, let's do it again, but this time the prover is cheating and uses a different polynomial.
+To explore the protocol’s limitations, let’s examine what happens when the prover attempts to cheat.
 
 #### Cheating Prover Example
 
@@ -565,7 +578,7 @@ $t(x)$ (so it has a clean cofactor). Steps 1 to 3 are the same as before.
 
     $$
     \begin{aligned}
-    h'(r)= r + 5 = 7 + 5 = 12 \Rightarrow E(h'(r))=E(r) * Enc(1)^5=27 \cdot 2^{5}=27 \cdot 32 \equiv 56 \ (\text{mod}\ 101).
+    h'(s)= s + 5 = 7 + 5 = 12 \Rightarrow E(h'(s))=E(s) * Enc(1)^5=27 \cdot 2^{5}=27 \cdot 32 \equiv 56 \ (\text{mod}\ 101).
     \end{aligned}
     $$
 
@@ -583,16 +596,16 @@ $t(x)$ (so it has a clean cofactor). Steps 1 to 3 are the same as before.
 
 Since the equality does hold, the verifier accepts the proof.
 
-That's the whole point of the cheat: with a single hidden point $r$, the prover can pick a different polynomial
-$p'(x)$ (here still degree <= 3) that satisfies $p'(r) = t(r) * h'(r)$, where $h'(x)$ is the cofactor of $p'(x)$.
+That's the whole point of the cheat: with a single hidden point $s$, the prover can pick a different polynomial
+$p'(x)$ (here still degree <= 3) that satisfies $p'(s) = t(s) * h'(s)$, where $h'(x)$ is the cofactor of $p'(x)$.
 The check passes at that point, even though $p'(x) \neq p(x)$.
 
 ### Addressing the Issues
 
 In the current protocol, we managed to address Issue 1 and Issue 2:
-1. Prover may not know the claimed polynomial `p(x)` at all
+1. Prover may not know the claimed polynomial $p(x)$ at all
     * Now the prover cannot come up with any polynomial, since the verifier sends encrypted powers of a secret random value
-2. Prover can construct any polynomial which has one shared point at `r` with `t(r) * h(r)`
+2. Prover can construct any polynomial which has one shared point at $s$ with $t(s) * h(s)$
     * Now the prover cannot construct any polynomial, since the verifier sends encrypted powers of a secret random value
 
 However, we still have Issue 3: No enforcement of degree.
@@ -601,3 +614,163 @@ However, we still have Issue 3: No enforcement of degree.
 
 Wow, that was a lot of information to digest. In the next section, we will address Issue 3 and
 complete our polynomial knowledge proof protocol.
+
+Even with hidden evaluation points, our protocol still fails to restrict a prover's polynomial degree. The next step introduces a mechanism to enforce this constraint-bringing us closer to real-world zkSNARK structure, where degree bounds are crucial for soundness.
+
+## Enforcing Polynomial Degree<a name="enforcing-polynomial-degree"></a>
+
+Previously, we ensured that the prover couldn't fabricate arbitrary encrypted values or match a different polynomial at a single secret point.
+
+However, we still had no guarantee on polynomial degree - a malicious prover could use higher-degree terms while remaining undetected.
+
+To fix this, we need a way to prove that the prover’s encrypted computations used only the encryptions of powers of the verifier's secret value $s$.
+
+### Degree‑Bound Enforcement via the Knowledge‑of‑Exponent Assumption<a name="degree-bound-enforcement-via-the-knowledge-of-exponent-assumption"></a>
+
+Knowing a polynomial means knowing its coefficients. In our protocol, each coefficient corresponds to a power of the encrypted secret $s$. However, since the prover controls the exponentiation process, nothing prevents them from introducing extra terms unless we cryptographically bind every operation to the verifier's provided values.
+
+This binding is achieved through the Knowledge‑of‑Exponent Assumption (KEA), introduced by Ivan Damgård in `Towards Practical Public Key Systems Secure Against Chosen Ciphertext Attacks`.
+
+#### The Knowledge of Exponent Assumption (KEA)<a name="the-knowledge-of-exponent-assumption-kea"></a>
+
+Let us understand first what KEA states before we integrate it into our protocol.
+
+Knowledge of Exponent Assumption (KEA) is a cryptographic assumption that demonstrate the knowledge of an exponent in a given equation without revealing the exponent itself. KEA is often used in various cryptographic protocols to prove the possession of a private key without disclosing the private key itself.
+
+In simple terms, if someone is given two group elements $g$ and $g^a$, and they later produce another pair $(X, Y)$ such that $Y = X^a$, KEA assumes they must actually know the number $x$ for which $X = g^x$.
+
+They cannot simply "guess" or forge such matching values, producing a consistent pair implies knowledge of the hidden exponent.
+
+##### Illustrative Example
+
+To visualize how KEA works, consider a simple interaction between Alice and Bob:
+
+Alice picks a random value $a$ that has to be exponentiated by Bob to any power, with the requirement that only $a$ can be exponentiated, and nothing else.
+
+1. Alice samples a random value $\alpha$
+2. Alice calculates $A = a^{\alpha} \mod n$
+3. Send $(a, A)$ to Bob
+4. Bob picks a random value $x$
+5. Bob calculates $X = a^{x} \mod n$ and $Y = A^{x} \mod n$
+6. Send $(X, Y)$ to Alice
+7. Alice checks that $Y \stackrel{?}{=} X^{\alpha} \mod n$
+
+If the equality holds, Alice is convinced that Bob knows $x$ such that $X = a^x \mod n$. Alice hasn't learned anything about $x$ itself, but she is convinced that Bob knows it. Bob also hasn't learned anything about $\alpha$ - if he would, we would be in trouble.
+
+### Integrating KEA into Our Protocol<a name="integrating-kea-into-our-protocol"></a>
+
+
+### Setup
+We know:
+
+$$
+\begin{aligned}
+p(x) &= x^3 − 3x^2 + 2x \\
+\end{aligned}
+$$
+
+And we use: $g = 2$, $p = 101, \alpha = 5$
+Therefore:
+
+$$
+Enc(v) = 2^v \ (\text{mod}\ 101) \\
+$$
+
+#### Protocol Execution
+1. Verifier samples $s$ random value $7$
+2. Verifier calculates encrypted powers:
+
+    $$
+    \begin{aligned}
+    Enc(7^1) = 2^7 \ = 27 \ (\text{mod}\ 101) \\
+    Enc(7^2) = 2^{49} \ = 50 \ (\text{mod}\ 101) \\
+    Enc(7^3) = 2^{343} \ = 86 \ (\text{mod}\ 101) \\
+    \end{aligned}
+    $$
+
+and to enforce polynomial soundness under KEA, the verifier calculates also:
+
+$$
+\begin{aligned}
+Enc(7^1)^\alpha = (2^7)^\alpha \ = (2^7)^5 \ = 2^{35}\ \ = 51(\text{mod}\ 101) \\
+Enc(7^2)^\alpha = (2^{49})^\alpha \ = (2^{49})^5 \ = 2^{245} \ = 76 \ (\text{mod}\ 101) \\
+Enc(7^3)^\alpha = (2^{343})^\alpha \ = (2^{343})^5 \ = 2^{1715} \ = 37 \ (\text{mod}\ 101) \\
+\end{aligned}
+$$
+
+3. Verifier forwards encrypted powers with and without the $\alpha$ shift to the prover
+4. Prover evaluates encrypted polynomial $p(x)$ at $s = 7$ (prover does not know $s$ in cleartext :!:):
+    $$
+    \begin{aligned}
+    E(p(7)) & = E(7^3 - 3*7^2 + 2*7^1) \\
+    & = E(7^3)^1 * E(7^2)^{-3} * E(7^1)^2 && \text{Prover received encrypted values } \\
+    & = 86^1 * 50^{-3} * 27^2 \\
+    & = 86 * 93 * 22 \\
+    & = 14 \ (\text{mod}\ 101) \\
+    \end{aligned}
+    $$
+
+    and $\alpha*p(s)$:
+
+    $$
+    \begin{aligned}
+    E(p(7))^{\alpha} & = E(7^3 - 3*7^2 + 2*7^1)^{\alpha} \\
+    & = E(7^3)^{1*\alpha} * E(7^2)^{-3*\alpha} * E(7^1)^{2*\alpha} && \text{Prover received encrypted values } \\
+    & = (E(7^3)^{\alpha})^1 * (E(7^2)^{\alpha})^{-3} * (E(7^1)^{\alpha})^{2} \\
+    & = 37^1 * 76^{-3} * 51^2 \\
+    & = 37 * 64 * 76 \\
+    & = 87 \ (\text{mod}\ 101) \\
+    \end{aligned}
+    $$
+
+7. Prover sends $E(p(7)) = 14$ and $E(p(7))^{\alpha} = 87$ to the verifier
+8. Verifier checks $(g^p)^{\alpha} = E(p(7))^{\alpha}$
+    $$
+    \begin{aligned}
+    (g^p)^{\alpha} \stackrel{?}{=} E(p(7))^{\alpha} (\text{mod}\ 101) \\
+    (2^{p(s)})^{5} \stackrel{?}{=} 87 (\text{mod}\ 101) \\
+    (2^{p(7)})^{5} \stackrel{?}{=} 87 (\text{mod}\ 101) \\
+    (2^{p(7)})^{5} \stackrel{?}{=} 87 (\text{mod}\ 101) \\
+    (2^{210})^{5} \stackrel{?}{=} 87 (\text{mod}\ 101) \\
+    2^{1050} \stackrel{?}{=} 87 (\text{mod}\ 101) \\
+    87 = 87 (\text{mod}\ 101
+    \end{aligned}
+    $$
+
+With the added KEA check, we can be sure that the prover used only the provided polynomial by the verifier, and did not introduce any higher-degree terms, since there is no other way to preserve the $\alpha$-shifted relationship without knowing the exponents used.
+
+#### The small-range problem<a name="the-small-range-problem"></a>
+
+At this stage, our protocol works exactly as intended: the prover and verifier can both compute
+
+$$(g^{p(7)})^{\alpha} = E(p(7))^{\alpha} \pmod{101},$$
+
+so the verifier is convinced that the prover knows the correct polynomial evaluation, without seeing the actual polynomial.
+That sounds like a zero‑knowledge proof, since nothing about the coefficients $c_i$ was revealed directly.
+But there's a subtle weakness hiding here.
+
+Zero-knowledge means the verifier should learn nothing about the hidden data, no matter what.
+
+However, in this simplified modular example, our coefficients don't live in a huge space, they take on small, easily enumerable values (for instance, between 0 and 100).
+
+That small range opens the door for brute‑force attacks.
+
+If the verifier knows the structure of the polynomial (say, $p(x)=c_2x^2 + c_1x + c_0$) and the evaluation point $x=7$, then they can simply try every possible combination of coefficients until their computed $E(p(7))$ matches the prover's.
+
+Even if each coefficient can take 100 values, a degree‑2 polynomial gives
+
+$100^3 = 1 000 000$ possible combinations, something that a single modern computer can test in seconds.
+
+#### Meaning of true zero‑knowledge<a name="meaning-of-true-zero-knowledge"></a>
+
+A truly secure zero‑knowledge proof would remain private even if:
+
+* there were only one coefficient,
+* its value were just 1, and
+* the verifier had unlimited curiosity.
+
+#### Summary<a name="summary"></a>
+
+Our protocol illustrates the logic of zero-knowledge: how to prove a fact without revealing a value, but not the cryptographic strength of zero-knowledge, which depends on hardness assumptions rather than small parameter ranges.
+
+In other words, the math works, but in a real system we'd need a much stronger secrecy foundation.
