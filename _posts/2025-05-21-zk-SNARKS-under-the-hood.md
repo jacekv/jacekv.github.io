@@ -33,10 +33,10 @@ myself, I want to share what I've learned about how these
         2. [The Knowledge of Exponent Assumption (KEA)](#the-knowledge-of-exponent-assumption-kea)
         3. [Integrating KEA into Our Protocol](#integrating-kea-into-our-protocol)
         4. [The Small-Range Problem](#the-small-range-problem)
-        5. [Meaning of true zero‑knowledge](#meaning-of-true-zero-knowledge)
-        6. [Summary](#summary)
-
-
+        5. [Zero‑knowledge](#zero-knowledge)
+        6. [The Scaling Problem](#the-scaling-problem)
+        7. [Multiplication of Encrypted Values - Cryptographic Pairings](#multiplication-of-encrypted-values---cryptographic-pairings)
+        8. [Summary](#summary)
 
 
 ## What is a zk-SNARK?<a name="what-is-a-zk-snark"></a>
@@ -678,7 +678,7 @@ $$
 
 #### Protocol Execution
 1. Verifier samples $s$ random value $7$
-2. Verifier calculates encrypted powers:
+2. Verifier calculates encrypted powers (the number of powers is determined by the degree of the polynomial, here $3$):
 
     $$
     \begin{aligned}
@@ -761,16 +761,74 @@ Even if each coefficient can take 100 values, a degree‑2 polynomial gives
 
 $100^3 = 1 000 000$ possible combinations, something that a single modern computer can test in seconds.
 
-#### Meaning of true zero‑knowledge<a name="meaning-of-true-zero-knowledge"></a>
+#### Zero-knowledge <a name="zero-knowledge"></a>
+Up to this point, the protocol proves soundness:
 
-A truly secure zero‑knowledge proof would remain private even if:
+the verifier is convinced that the prover evaluated exactly the intended polynomial, not one of higher degree, and did so correctly at the hidden point $s$.
+However, soundness $\neq$ zero‑knowledge.
 
-* there were only one coefficient,
-* its value were just 1, and
-* the verifier had unlimited curiosity.
+Zero-knowledge adds a second promise: that the verifier learns nothing else about the prover's secret polynomial.
 
-#### Summary<a name="summary"></a>
+In our example protocol from [Integrating KEA into Our Protocol](#integrating-kea-into-our-protocol), the prover send the verifier the encrypted evaluation $E(p(7))$.
+
+At first glance, that seems safe: the verifier only sees an encrypted value, not the polynomial itself.
+
+However, because our encryption is weak (due to the small coefficient range) and being deterministic, the verifier can exploit it to learn something about the polynomial.
+
+Deterministic encryption means that the same input always produces the same output ($E(m) = E(m)$).
+
+If the verifier ever sees that same number for $E(p(7))$ again, the verifier can recognize it and infer, "oh, this is the same value as before."
+
+That tiny bit of leakage breaks the "learn nothing" guarantee - it lets the verifier correlate runs and gain information about the prover's secret polynomial.
+
+How can we fix this?
+
+Based on what we've learned in the [The Knowledge of Exponent Assumption (KEA)](#the-knowledge-of-exponent-assumption-kea) we are going to introduce randomness to step 7 of the protocol execution. The prover will blind the encrypted polynomial evaluation with a random value.
+
+5. Prover picks a random value $\delta$, calculates $E(p(7))^{\delta}$ and $E(p(7))^{\alpha \delta}$ and sends it to the verifier
+6. Verifier checks $(g^{p(7)})^{\alpha \delta} = (E(p(7))^{\alpha})^{\delta}$
+
+We see that now the verifier cannot correlate runs based on the encrypted polynomial evaluation, since it is blinded with a random value $\delta$.
+
+And now the protocol is truly zero-knowledge: the verifier learns nothing about the prover's secret polynomial, beyond the fact that it was evaluated correctly at the hidden point $s$.
+
+#### The scaling problem<a name="the-scaling-problem"></a>
+
+Up to this point, our protocol has achieved Soundness (the Prover can't lie) and Zero-Knowledge (the Verifier doesn't learn the secret). But we have an **interactive** zero-knowledge protocol. You can compare an interactive protocol it with a private conversation between two parties, the Prover and the Verifier.
+
+Why is it interactive?
+
+Because the verifier picks the secrets $s$ and $\alpha$, hides them, and then challenges the Prover.
+
+Now, if a third party joins and sees the result of the interaction, they cannot trust it. The third party does not know if the Prover and Verifier might have colluded.
+
+Therefore, the third party would need to run the protocol with the Prover themselves, by picking their own secrets $s'$ and $\alpha'$. What if 1000 more parties want to verify the proof? They would all need to run the protocol with the Prover, which is not scalable.
+
+Imagine this in the context of a blockchain, such as Ethereum, with millions of users. If every user needs to interact with the Prover to verify a proof, it would be impossible to scale.
+
+Therefore, our goal is a non-interactive protocol where a single proof can be verified by anyone, anywhere, at any time. This requires us to transform the secret parameters $s$ and $\alpha$ into a public reference that is simultaneously accessible to all, but remains infeasible for anyone to exploit.
+
+We could achieve this by encrypting the secrets $s$ and $\alpha$ the same way the verifier encrypts the powers of $s$ before sending them to the Prover. However, the homomorphic encryption we use does not support the multiplication of two encrypted values, which is required for both verification checks to multiply encryptions of $t(s)$ and $h$ as well as $p$ and $\alpha$.
+
+This is where we will have to introduce a new cryptographic primitive called Cryptographic Pairings.
+
+---
+**Interactive vs Non-Interactive Zero-Knowledge Proofs**
+
+In an interactive zero-knowledge proof, the Prover and Verifier engage in a back-and-forth communication. The Verifier is actively involved in the proof process. The Prover responds to the Verifier's challenges, and the Verifier checks the responses to determine if the proof is valid.
+
+In contrast, a non-interactive zero-knowledge proof does not require an interaction between the Prover and Verifier. The Prover generates a proof that can be verified by anyone without needing to communicate with the Prover. This is typically achieved using a Common Reference String (CRS) that both parties can access.
+
+How it usually works:
+
+1. We have a Trusted Setup ceremony creates the encrypted secrets ($s$ and $\alpha$) and publishes them on a public notice board. The original "raw" secrets are then destroyed (the "Toxic Waste").
+2. Anyone can walk up to the notice board, see the Prover's proof, and use the public tools to verify it themselves. They don't need to talk to the Prover at all.
+3. Because the Verifier no longer knows the secret $\alpha$ (it was destroyed), they need a special mathematical "lens"-Cryptographic Pairings (later more)-to check if the Prover’s math is correct using only the public, encrypted data.
+---
+
+#### Multiplication of Encrypted Values - Cryptographic Pairings<a name="multiplication-of-encrypted-values---cryptographic-pairings"></a>
+<!-- #### Summary<a name="summary"></a>
 
 Our protocol illustrates the logic of zero-knowledge: how to prove a fact without revealing a value, but not the cryptographic strength of zero-knowledge, which depends on hardness assumptions rather than small parameter ranges.
 
-In other words, the math works, but in a real system we'd need a much stronger secrecy foundation.
+In other words, the math works, but in a real system we'd need a much stronger secrecy foundation. -->
