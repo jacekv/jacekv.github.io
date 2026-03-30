@@ -824,6 +824,7 @@ How it usually works:
 1. We have a Trusted Setup ceremony creates the encrypted secrets ($s$ and $\alpha$) and publishes them on a public notice board. The original "raw" secrets are then destroyed (the "Toxic Waste").
 2. Anyone can walk up to the notice board, see the Prover's proof, and use the public tools to verify it themselves. They don't need to talk to the Prover at all.
 3. Because the Verifier no longer knows the secret $\alpha$ (it was destroyed), they need a special mathematical "lens"-Cryptographic Pairings (later more)-to check if the Prover’s math is correct using only the public, encrypted data.
+
 ---
 
 #### Multiplication of Encrypted Values - Cryptographic Pairings<a name="multiplication-of-encrypted-values---cryptographic-pairings"></a>
