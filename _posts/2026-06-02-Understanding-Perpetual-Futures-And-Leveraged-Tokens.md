@@ -1,10 +1,10 @@
 ---
 layout: post
-title: "Understanding Perpetual Futures & Leveraged Tokens: A Beginner's Guide"
+title: "Understanding Perpetual Futures and Leveraged Tokens: A Beginner's Guide"
 tags: Futures Perpetual Futures Tokens
 ---
 
-# Understanding Perpetual Futures & Leveraged Tokens: A Beginner's Guide
+# Understanding Perpetual Futures and Leveraged Tokens: A Beginner's Guide
 
 *A personal reference on how perps, hedging, and leveraged tokens work, explained from the ground up.*
 
@@ -425,7 +425,7 @@ Now let's see what happens when BTC moves.
 **Case A: BTC goes UP 5% -> $105,000** 🎉
 
 - Your 0.01 BTC is now worth $1,050 (notional).
-- Your P&L is +$50, so your margin grew from $100 -> $150.
+- Your PandL is +$50, so your margin grew from $100 -> $150.
 - **New leverage = $1,050 / $150 = 7x** ❌
 
 Even though you "started" at 10x, you're now only at 7x. Your exposure is *less leveraged* than it should be.
@@ -433,7 +433,7 @@ Even though you "started" at 10x, you're now only at 7x. Your exposure is *less 
 **Case B: BTC goes DOWN 5% -> $95,000** 😬
 
 - Your 0.01 BTC is now worth $950 (notional).
-- Your P&L is -$50, so your margin shrunk from $100 -> $50.
+- Your PandL is -$50, so your margin shrunk from $100 -> $50.
 - **New leverage = $950 / $50 = 19x** ❌
 
 Now you're way *more* leveraged than you signed up for, and dangerously close to liquidation.
@@ -637,7 +637,7 @@ The execution venue matters a lot for leveraged tokens, because every basis poin
 | **Funding rate**    | Periodic payment between longs and shorts that keeps perp price = spot   |
 | **Long**            | Bet price goes up                                                        |
 | **Short**           | Bet price goes down                                                      |
-| **Leverage**        | Borrowed exposure, amplifies P&L proportionally                          |
+| **Leverage**        | Borrowed exposure, amplifies PandL proportionally                          |
 | **Margin**          | Your collateral backing a leveraged position                             |
 | **Notional**        | The full position size (margin × leverage)                               |
 | **Liquidation**     | Losing your margin when the trade moves too far against you              |
