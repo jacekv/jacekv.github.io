@@ -8,6 +8,11 @@ description: >
 
 url: "https://blog.varkiwi.com"
 
+image:
+  path: /assets/og-default.png
+  width: 1200
+  height: 630
+
 # Email / Social media user names used by the minima theme:
 # All of these are optional and can be removed or commented out
 #email: "example@mail.com"
