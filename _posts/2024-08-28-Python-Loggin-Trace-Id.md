@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "Use Python's Logging Module with a Trace Id"
+description: "How to enrich Python's logging module with a trace ID so you can follow a single request across all of its log lines."
 ---
 
 ## Use Python's Logging Module with a Trace Id

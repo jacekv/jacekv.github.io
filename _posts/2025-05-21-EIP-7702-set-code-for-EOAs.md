@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "The Game-Changing EIP-7702"
+description: "How EIP-7702, shipped in Ethereum's Pectra upgrade, lets externally owned accounts set executable code and unlock account-abstraction features."
 tags: Ethereum Blockchain Account-Abstraction EIP-7702
 ---
 

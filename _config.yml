@@ -1,10 +1,10 @@
 title: Jacek's Blog
+tagline: "Crypto, ZK & Smart Contract Notes"
 author: Jacek Varky
 
 description: >
-  Collection of different articles and thoughts on various topics. Whatever I am working
-  on and I feel that I might need it later, is going to be written down here ;)
-  You never know.
+  Notes and deep dives on Ethereum, zero-knowledge proofs, smart-contract
+  security, and DeFi mechanics — written down so I (and you) can find them later.
 
 url: "https://blog.varkiwi.com"
 

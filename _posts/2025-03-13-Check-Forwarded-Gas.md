@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "Secure Gas Forwarding in Smart Contracts: Preventing Insufficient Gas Griefing Attacks"
+description: "Understanding the insufficient gas griefing attack in smart contracts, and how to securely forward gas to subcalls to prevent it."
 tags: Solidity Security
 ---
 

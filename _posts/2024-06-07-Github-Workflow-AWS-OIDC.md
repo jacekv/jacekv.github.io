@@ -1,3 +1,7 @@
+---
+description: "Replace long-lived AWS credentials in your GitHub workflows with short-lived tokens using OpenID Connect (OIDC)."
+---
+
 # Github Workflow with AWS OIDC
 
 Are you storing long-lived credentials in your Github workflows, to access AWS

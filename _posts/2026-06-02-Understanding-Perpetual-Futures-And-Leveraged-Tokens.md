@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "Understanding Perpetual Futures and Leveraged Tokens: A Beginner's Guide"
+description: "A beginner-friendly reference on how perpetual futures, hedging, and leveraged tokens work, explained from the ground up."
 tags: Futures Perpetual Futures Tokens
 ---
 

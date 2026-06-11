@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "Verifying Proxy Contracts Using Foundry"
+description: "A practical note on verifying already-deployed contracts — especially proxy contracts — using Foundry."
 tags: Ethereum EVM Solidity Foundry
 ---
 

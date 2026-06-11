@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "Ethereum Account Abstraction"
+description: "An introduction to Ethereum account abstraction: what it is, why it matters, and how it reshapes the way accounts and transactions work."
 ---
 # Account Abstraction
 

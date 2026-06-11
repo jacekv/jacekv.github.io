@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "Signature Malleability in Solidity: Understanding and Preventing ECDSA Attacks"
+description: "Understanding ECDSA signature malleability in Solidity, why it is dangerous, and how to prevent it in your smart contracts."
 tags: Ethereum Blockchain Math Cryptography ECDSA
 ---
 

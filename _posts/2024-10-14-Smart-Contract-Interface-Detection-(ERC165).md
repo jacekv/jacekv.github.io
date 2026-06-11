@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "ERC-165: Standard Interface Detection in EVM Smart Contracts"
+description: "A practical look at ERC-165 standard interface detection — how EVM smart contracts advertise and detect which interfaces they implement."
 ---
 
 ## ERC-165: Standard Interface Detection in EVM Smart Contracts

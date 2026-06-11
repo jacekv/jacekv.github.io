@@ -1,3 +1,7 @@
+---
+description: "Why you should not use AWS default security groups, and a script to strip their rules to satisfy AWS Security Hub."
+---
+
 # AWS default security groups
 
 When you create a new AWS account you get a default security group for each VPC. These security groups are named `default` and they are created in each VPC so that when you launch an instance, the instance is automatically associated with the default security group. The default security group allows all outbound traffic and no inbound traffic.

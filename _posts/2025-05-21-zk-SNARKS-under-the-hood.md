@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "zk-SNARKS Under the Hood - How They Work"
+description: "A from-the-ground-up walkthrough of how zk-SNARKs work — the cryptography powering privacy and scalability on the blockchain."
 tags: Ethereum Blockchain zk zkSnark Math Cryptography
 math: true
 ---
@@ -36,7 +37,8 @@ myself, I want to share what I've learned about how these
         5. [Zero‑knowledge](#zero-knowledge)
         6. [The Scaling Problem](#the-scaling-problem)
         7. [Multiplication of Encrypted Values - Cryptographic Pairings](#multiplication-of-encrypted-values---cryptographic-pairings)
-        8. [Summary](#summary)
+        8. [Trusted Party Setup](#trusted-party-setup)
+        9. [Summary](#summary)
 
 
 ## What is a zk-SNARK?<a name="what-is-a-zk-snark"></a>
@@ -828,8 +830,545 @@ How it usually works:
 ---
 
 #### Multiplication of Encrypted Values - Cryptographic Pairings<a name="multiplication-of-encrypted-values---cryptographic-pairings"></a>
-<!-- #### Summary<a name="summary"></a>
 
-Our protocol illustrates the logic of zero-knowledge: how to prove a fact without revealing a value, but not the cryptographic strength of zero-knowledge, which depends on hardness assumptions rather than small parameter ranges.
+A cryptographic pairing, also called a bilinear map, is a mathematical function that takes two group elements as input and returns an element in a third group.
+Informally, if we encode two values $a$ and $b$ as group elements
+$$g^a$$
+and
+$$h^b$$
+then a pairing allows us to obtain an encoding of their product:
 
-In other words, the math works, but in a real system we'd need a much stronger secrecy foundation. -->
+$$e(g^a, h^b) = e(g,h)^{ab}$$
+
+The values $a$ and $b$ are not revealed directly. Instead, they remain hidden in the exponents. However, the pairing makes it possible to verify a multiplicative relationship between them.
+
+More formally, a pairing is a function
+
+$$e : G_1 \times G_2 \rightarrow G_T$$
+
+where $G_1$, $G_2$, and $G_T$ are groups. The crucial property is bilinearity:
+
+$$e(g^a, h^b) = e(g,h)^{ab}$$
+
+This means that exponentiation in the input groups becomes multiplication in the exponent of the output group.
+For example, suppose a prover claims that three hidden values satisfy
+
+$$c = ab$$
+
+The verifier can check this relation using pairings:
+
+$$e(g^a, h^b) \stackrel{?}{=} e(g^c, h)$$
+
+The left-hand side is
+
+$$e(g^a, h^b) = e(g,h)^{ab}$$
+
+and the right-hand side is
+
+$$e(g^c, h) = e(g,h)^c$$
+
+Therefore, the equality holds exactly when
+
+$$c = ab$$
+
+assuming the encodings were constructed correctly.
+
+This ability is important because ordinary group operations naturally support addition of encoded values. For example:
+
+$$g^a \cdot g^b = g^{a+b}$$
+
+But ordinary group operations do not allow us to directly obtain
+
+$$g^{ab}$$
+
+from $g^a$ and $g^b$. Pairings provide this missing multiplicative check.
+
+However, the result of a pairing lives in the target group $G_T$, not in the original input groups $G_1$ or $G_2$. Therefore, the output of one pairing cannot generally be used as the input to another pairing:
+
+$$e : G_1 \times G_2 \rightarrow G_T$$
+
+not
+
+$$e : G_T \times G_1 \rightarrow G_T$$
+
+This is an important limitation. A pairing can combine two encoded values multiplicatively, but it does not allow unlimited repeated multiplication inside the same structure. For instance, from
+
+$$e(g^a, h^b) = e(g,h)^{ab}$$
+
+we do not obtain a new $G_1$ or $G_2$ element that can be paired again with $g^c$ to produce an encoding of $abc$.
+In this sense, pairings allow a controlled form of multiplication: they let us verify products of encoded values, but they do not allow arbitrary chained multiplication.
+Pairing outputs also preserve a homomorphic-like structure inside the target group. For example:
+
+$$e(g^a, h^b) \cdot e(g^c, h^d)
+=
+e(g,h)^{ab} \cdot e(g,h)^{cd}$$
+
+which gives
+
+$$e(g,h)^{ab + cd}$$
+
+So pairings can be used not only to check individual products, but also sums of products. This is exactly the kind of algebraic structure needed in SNARKs, where computations are represented as arithmetic constraints involving additions and multiplications.
+
+#### Trusted Party Setup <a name="trusted-party-setup"></a>
+
+During the Trusted Setup, a trusted party samples the secret values, such as $s$ and $\alpha$, and encodes all necessary powers of $s$ together with their corresponding $\alpha$-shifts:
+
+$$
+g^\alpha,\quad g^{s^i},\quad g^{\alpha s^i}
+$$
+
+for
+
+$$
+i = 0, 1, \dots, d
+$$
+
+where $d$ is the maximum degree of the polynomials used by the protocol.
+
+Once these encoded values are computed, the trusted party must destroy the original raw secrets $s$ and $\alpha$. These raw values are often called the ☣️ **toxic waste** ☣️. If someone keeps them, they could create fake proofs that still pass verification.
+
+The published encoded values form the **Common Reference String**, or **CRS**. The CRS is public and reusable: after it has been generated, any Prover can use it to create a proof, and any Verifier can use it to check that proof without interacting with the Prover.
+
+The CRS is usually divided into two parts:
+
+1. The **Proving Key**, used by the Prover to construct proofs.
+2. The **Verification Key**, used by the Verifier to check proofs.
+
+In our simplified setting, the Proving Key contains the encoded powers of $s$ and their $\alpha$-shifted versions:
+
+$$
+\text{Proving Key} = \left( g^{s^i},\ g^{\alpha s^i} \right)
+\quad \text{for } i = 0,1,\dots,d
+$$
+
+The Verification Key contains the values needed by the Verifier:
+
+$$
+\text{Verification Key} = \left( g^{t(s)},\ g^\alpha \right)
+$$
+
+Here, $t(x)$ is the target polynomial, and $g^{t(s)}$ is the encoded evaluation of the target polynomial at the secret point $s$.
+
+Now the important point is that the Verifier can perform the necessary checks without knowing $s$ or $\alpha$.
+
+The Prover uses the Proving Key to compute encoded polynomial evaluations such as:
+
+$$
+g^{p(s)},\quad g^{h(s)},\quad g^{p'(s)}
+$$
+
+where $p'(s)$ is the $\alpha$-shifted version of $p(s)$:
+
+$$
+p'(s) = \alpha p(s)
+$$
+
+However, to preserve zero-knowledge, the Prover should not send these values directly. If the Prover always sent
+
+$$
+g^{p(s)},\quad g^{h(s)},\quad g^{\alpha p(s)}
+$$
+
+then the proof would be deterministic. Anyone seeing the same proof values again could recognize that the same hidden polynomial evaluation was used.
+
+To prevent this, the Prover samples a fresh random blinding factor
+
+$$
+\delta \neq 0
+$$
+
+for every proof and sends the blinded values instead:
+
+$$
+g^{\delta p(s)},\quad g^{\delta h(s)},\quad g^{\delta \alpha p(s)}
+$$
+
+The blinding factor changes the concrete group elements, but it preserves the algebraic relationships that the Verifier needs to check.
+
+The Verifier then uses pairings to check the proof.
+
+First, the Verifier checks that $p(x)$ is divisible by the target polynomial $t(x)$.
+
+Recall that the Prover wants to convince the Verifier that:
+
+$$
+p(x) = t(x)h(x)
+$$
+
+At the hidden point $s$, this becomes:
+
+$$
+p(s) = t(s)h(s)
+$$
+
+Because the Verifier only has encoded values, they cannot directly multiply $g^{t(s)}$ and $g^{h(s)}$ to obtain $g^{t(s)h(s)}$. But with pairings, they can check the multiplicative relation:
+
+$$
+e(g^{\delta p(s)}, g) \stackrel{?}{=} e(g^{t(s)}, g^{\delta h(s)})
+$$
+
+The left-hand side is:
+
+$$
+e(g^{\delta p(s)}, g) = e(g,g)^{\delta p(s)}
+$$
+
+The right-hand side is:
+
+$$
+e(g^{t(s)}, g^{\delta h(s)}) = e(g,g)^{\delta t(s)h(s)}
+$$
+
+Therefore, the equality holds when:
+
+$$
+p(s)=t(s)h(s)
+$$
+
+Second, the Verifier checks that the Prover constructed $p(s)$ correctly using the powers published in the CRS.
+
+This is where the secret $\alpha$ is used. During setup, the CRS included both:
+
+$$
+g^{s^i}
+$$
+
+and
+
+$$
+g^{\alpha s^i}
+$$
+
+So if the Prover honestly computes:
+
+$$
+g^{p(s)}
+$$
+
+then they should also be able to compute the matching shifted value:
+
+$$
+g^{p'(s)} = g^{\alpha p(s)}
+$$
+
+The Verifier checks this with another pairing equation:
+
+$$
+e(g^{\delta p(s)}, g^\alpha) \stackrel{?}{=} e(g^{\delta \alpha p(s)}, g)
+$$
+
+The left-hand side is:
+
+$$
+e(g^{\delta p(s)}, g^\alpha)=e(g,g)^{\delta \alpha p(s)}
+$$
+
+The right-hand side is:
+
+$$
+e(g^{\delta \alpha p(s)}, g)=e(g,g)^{\delta \alpha p(s)}
+$$
+
+So the equality holds when the Prover's shifted value is consistent with the blinded polynomial evaluation.
+
+This check prevents the Prover from submitting arbitrary encoded values. They must submit values that are consistent with the structured powers generated during the Trusted Setup.
+
+Together, these two pairing checks replace the role of the interactive Verifier.
+
+Previously, the Verifier personally chose $s$ and $\alpha$, kept them secret, and used them to challenge the Prover. Now, the Trusted Setup publishes only encoded versions of those secrets. Pairings allow anyone to verify the same relationships using the public CRS, without learning the secrets themselves.
+
+This is what makes the protocol non-interactive: the Prover can generate a proof once, publish it, and anyone can verify it independently.
+
+##### Example: Trusted Setup with Our Polynomial
+
+Let us continue with the same polynomial from before:
+
+$$
+p(x)=x^3-3x^2+2x
+$$
+
+and the same target polynomial:
+
+$$
+t(x)=(x-1)(x-2)
+$$
+
+Since
+
+$$
+p(x)=t(x)h(x)
+$$
+
+we have:
+
+$$
+h(x)=x
+$$
+
+Assume the Trusted Setup samples the secret values:
+
+$$
+s=7
+$$
+
+and
+
+$$
+\alpha=5
+$$
+
+In a real protocol, these values would be sampled randomly from a very large field. Here we use small numbers only for illustration.
+
+The trusted party now computes the encoded powers of $s$ up to degree $3$:
+
+$$
+g^{s^0}=g^1
+$$
+
+$$
+g^{s^1}=g^7
+$$
+
+$$
+g^{s^2}=g^{49}
+$$
+
+$$
+g^{s^3}=g^{343}
+$$
+
+It also computes the corresponding $\alpha$-shifted powers:
+
+$$
+g^{\alpha s^0}=g^5
+$$
+
+$$
+g^{\alpha s^1}=g^{35}
+$$
+
+$$
+g^{\alpha s^2}=g^{245}
+$$
+
+$$
+g^{\alpha s^3}=g^{1715}
+$$
+
+These values become part of the Proving Key.
+
+The trusted party also computes the value needed for verification:
+
+$$
+t(s)=t(7)=(7-1)(7-2)=30
+$$
+
+so the Verification Key contains:
+
+$$
+g^{t(s)}=g^{30}
+$$
+
+and
+
+$$
+g^\alpha=g^5
+$$
+
+After publishing these encoded values, the trusted party must delete the raw secrets $s=7$ and $\alpha=5$.
+
+Now the Prover uses the Proving Key to compute the encoded evaluation of $p(s)$.
+
+Since
+
+$$
+p(7)=7^3-3\cdot 7^2+2\cdot 7
+$$
+
+we get:
+
+$$
+p(7)=343-147+14=210
+$$
+
+Internally, the Prover first computes:
+
+$$
+g^{p(s)}=g^{210}
+$$
+
+The Prover also computes the quotient polynomial evaluation:
+
+$$
+h(7)=7
+$$
+
+so internally they compute:
+
+$$
+g^{h(s)}=g^7
+$$
+
+Finally, using the $\alpha$-shifted powers from the Proving Key, the Prover computes:
+
+$$
+g^{p'(s)}=g^{\alpha p(s)}
+$$
+
+Since $\alpha=5$ and $p(7)=210$, this becomes:
+
+$$
+g^{p'(s)}=g^{5\cdot 210}=g^{1050}
+$$
+
+These are the unblinded values. However, to preserve zero-knowledge, the Prover should not send them directly.
+
+If the Prover always sent
+
+$$
+g^{p(s)},\quad g^{h(s)},\quad g^{\alpha p(s)}
+$$
+
+then the proof would be deterministic. Anyone seeing the same values again could recognize that the same hidden polynomial evaluation was used.
+
+To prevent this, the Prover samples a fresh random blinding factor. For this example, let:
+
+$$
+\delta = 3
+$$
+
+In a real protocol, $\delta$ would be sampled randomly from a very large field and would be different for every proof.
+
+The Prover now blinds the values by raising them to the power of $\delta$.
+
+Instead of sending:
+
+$$
+g^{p(s)} = g^{210}
+$$
+
+the Prover sends:
+
+$$
+(g^{p(s)})^\delta = g^{\delta p(s)} = g^{3 \cdot 210}=g^{630}
+$$
+
+Instead of sending:
+
+$$
+g^{h(s)} = g^7
+$$
+
+the Prover sends:
+
+$$
+(g^{h(s)})^\delta = g^{\delta h(s)} = g^{3 \cdot 7}=g^{21}
+$$
+
+And instead of sending:
+
+$$
+g^{\alpha p(s)} = g^{1050}
+$$
+
+the Prover sends:
+
+$$
+(g^{\alpha p(s)})^\delta = g^{\delta \alpha p(s)}
+$$
+
+Since $\delta=3$, $\alpha=5$, and $p(7)=210$, this becomes:
+
+$$
+g^{\delta \alpha p(s)} = g^{3 \cdot 5 \cdot 210}=g^{3150}
+$$
+
+The Verifier now receives the blinded proof values:
+
+$$
+g^{\delta p(s)}=g^{630}
+$$
+
+$$
+g^{\delta h(s)}=g^{21}
+$$
+
+$$
+g^{\delta \alpha p(s)}=g^{3150}
+$$
+
+and uses the Verification Key:
+
+$$
+g^{t(s)}=g^{30}
+$$
+
+$$
+g^\alpha=g^5
+$$
+
+The first check verifies divisibility:
+
+$$
+e(g^{\delta p(s)}, g) \stackrel{?}{=} e(g^{t(s)}, g^{\delta h(s)})
+$$
+
+Substituting the values:
+
+$$
+e(g^{630}, g) \stackrel{?}{=} e(g^{30}, g^{21})
+$$
+
+The left-hand side is:
+
+$$
+e(g^{630}, g)=e(g,g)^{630}
+$$
+
+The right-hand side is:
+
+$$
+e(g^{30}, g^{21})=e(g,g)^{30\cdot 21}=e(g,g)^{630}
+$$
+
+So the first check passes.
+
+The second check verifies that the Prover used the structured powers from the CRS correctly:
+
+$$
+e(g^{\delta p(s)}, g^\alpha) \stackrel{?}{=} e(g^{\delta \alpha p(s)}, g)
+$$
+
+Substituting the values:
+
+$$
+e(g^{630}, g^5) \stackrel{?}{=} e(g^{3150}, g)
+$$
+
+The left-hand side is:
+
+$$
+e(g^{630}, g^5)=e(g,g)^{630\cdot 5}=e(g,g)^{3150}
+$$
+
+The right-hand side is:
+
+$$
+e(g^{3150}, g)=e(g,g)^{3150}
+$$
+
+So the second check also passes.
+
+This example shows why pairings are the missing ingredient.
+
+The Verifier does not know $s$, does not know $\alpha$, does not know $p(s)$, does not know $h(s)$, and does not know the blinding factor $\delta$. Nevertheless, using only the public CRS and the Prover's blinded encoded outputs, the Verifier can check that:
+
+$$
+p(s)=t(s)h(s)
+$$
+
+and that the Prover's polynomial evaluation was constructed consistently from the powers published during the Trusted Setup.
+
+The fresh blinding factor makes the proof non-linkable: even if the Prover proves the same statement again, a new $\delta$ produces different group elements while preserving the same pairing equations.
+
+That is the core idea behind turning our interactive polynomial protocol into a non-interactive zero-knowledge protocol.

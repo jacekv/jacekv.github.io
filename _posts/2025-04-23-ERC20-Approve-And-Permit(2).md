@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "Token Approvals in Ethereum: From ERC20 to Permit2"
+description: "From classic ERC-20 approvals to EIP-2612 permit and Uniswap's Permit2 — how token approvals work in Ethereum and how they evolved."
 tags: Solidity ERC20 Approval Permit Permit2 EIP2612
 ---
 

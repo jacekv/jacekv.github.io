@@ -1,8 +1,8 @@
 {% comment %}
-This file extends Minima's head.html, adding MathJax support.
+Minima includes this file inside the document <head>. We use it to load
+MathJax only on pages that opt in via `math: true` in front matter (or
+`site.math` globally).
 {% endcomment %}
-{% include head.html %}
-
 {% if page.math or site.math %}
 <script>
   window.MathJax = {

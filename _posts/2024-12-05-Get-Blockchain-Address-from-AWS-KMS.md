@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "Get blockchain address from AWS KMS"
+description: "A step-by-step guide to deriving an Ethereum blockchain address from a key stored in AWS KMS."
 ---
 
 # Get blockchain address from AWS KMS

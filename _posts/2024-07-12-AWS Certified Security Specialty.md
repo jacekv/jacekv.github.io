@@ -1,3 +1,7 @@
+---
+description: "My study notes for the AWS Certified Security Specialty exam, covering threat detection, incident response, and more."
+---
+
 # AWS Certified Security Specialty
 
 I am currently doing a Udemy course on AWS Certified Security Specialty. I will

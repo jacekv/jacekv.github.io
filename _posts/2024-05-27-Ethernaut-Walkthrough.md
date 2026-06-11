@@ -1,3 +1,7 @@
+---
+description: "My walkthrough of every OpenZeppelin Ethernaut level, with explanations of how I solved each smart-contract security challenge."
+---
+
 I decided to do all the OpenZeppelin [Ethernaut](https://ethernaut.openzeppelin.com/) levels and write down on how I solved each level.
 
 If you want to do the same, I recommend that you try to solve the levels on your own first. If you are stuck, you can always look at the hints or the solutions.

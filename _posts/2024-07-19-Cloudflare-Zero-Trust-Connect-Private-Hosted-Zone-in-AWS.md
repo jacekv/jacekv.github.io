@@ -1,3 +1,7 @@
+---
+description: "How to connect a Cloudflare Zero Trust tunnel to an AWS VPC and reach services via private DNS names in a private hosted zone."
+---
+
 ## Connect Cloudflare Zero Trust Tunnel to VPC with private hosted zone in AWS
 
 That's a long title and contains lots of information. Let's break it down:

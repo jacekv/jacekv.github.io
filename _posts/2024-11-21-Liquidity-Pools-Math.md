@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "Liquidity Pool Math"
+description: "The math behind automated market maker liquidity pools — the formulas used to calculate tokens received when providing liquidity or creating a pool."
 ---
 
 # Liquidity Pool Math

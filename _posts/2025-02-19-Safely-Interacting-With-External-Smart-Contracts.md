@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "Safely Interacting with External Smart Contracts: A Developer's Guide"
+description: "A developer's guide to safely calling external smart contracts on EVM chains, covering the pitfalls and defensive patterns that prevent them."
 tags: Solidity
 ---
 

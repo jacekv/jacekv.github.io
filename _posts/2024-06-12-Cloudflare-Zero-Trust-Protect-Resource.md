@@ -1,3 +1,7 @@
+---
+description: "Using Cloudflare Zero Trust to protect resources running in AWS with identity- and context-based access."
+---
+
 # Cloudflare Zero Trust Protect Resource
 
 I started to play around with Cloudflare Zero Trust in order to protect
