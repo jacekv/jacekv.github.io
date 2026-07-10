@@ -38,6 +38,14 @@ myself, I want to share what I've learned about how these
         6. [The Scaling Problem](#the-scaling-problem)
         7. [Multiplication of Encrypted Values - Cryptographic Pairings](#multiplication-of-encrypted-values---cryptographic-pairings)
         8. [Trusted Party Setup](#trusted-party-setup)
+        9. [Trusting One out of Many](#trusting-one-out-of-many)
+            1. [The Single-Trusted-Party Problem](#the-single-trusted-party-problem)
+            2. [How the Ceremony Works](#how-the-ceremony-works)
+            3. [Worked Example: Three-Party Ceremony](#worked-example-two-party-ceremony)
+            4. [Verifying Each Contribution](#verifying-each-contribution)
+            5. [The 1-of-n Trust Model](#the-1-of-n-trust-model)
+            6. [Real-World Ceremonies](#real-world-ceremonies)
+            7. [Remaining Limitation: Circuit-Specific Setup](#remaining-limitation-circuit-specific-setup)
         9. [Summary](#summary)
 
 
@@ -1372,3 +1380,344 @@ and that the Prover's polynomial evaluation was constructed consistently from th
 The fresh blinding factor makes the proof non-linkable: even if the Prover proves the same statement again, a new $\delta$ produces different group elements while preserving the same pairing equations.
 
 That is the core idea behind turning our interactive polynomial protocol into a non-interactive zero-knowledge protocol.
+
+#### Trusting One out of Many<a name="trusting-one-out-of-many"></a>
+
+##### The Single-Trusted-Party Problem<a name="the-single-trusted-party-problem"></a>
+
+Recall what the Trusted Setup produces: a Common Reference String (CRS) that encodes powers of a secret value $s$ and a secret shift $\alpha$. If the party who runs the setup keeps those raw values, they can:
+
+1. Compute any polynomial evaluation at $s$ from scratch.
+2. Construct a fake proof for a false statement that passes both pairing checks perfectly.
+
+This is sometimes called the **toxic-waste problem**: the raw secrets must be destroyed after the ceremony, but there is no way for an outsider to verify that destruction actually happened. A malicious or compromised single party is an undetectable threat.
+
+The obvious fix: instead of one party, use many. If $n$ independent parties each contribute randomness to the CRS, the scheme is secure as long as **at least one of them** honestly destroys their portion of the secrets. An adversary would need to compromise every single participant to reconstruct the combined toxic waste.
+
+This is the core idea behind **Multi-Party Computation (MPC) ceremonies** for zk-SNARK setups.
+
+##### How the Ceremony Works<a name="how-the-ceremony-works"></a>
+
+The ceremony works sequentially. Think of it as passing a baton: each participant takes the current CRS, mixes in their own randomness, and hands it on. At the end, the CRS encodes the *product* of all participants' secrets, and because none of them know each other's secrets, nobody knows the combined value.
+
+Let's walk through the math.
+
+#### Round 1: first participant
+
+Participant A samples a secret $s_A$ and $\alpha_A$. They take the initial CRS (just a generator $g$) and compute encoded powers:
+
+$$
+g^{s_A^0},\ g^{s_A^1},\ g^{s_A^2},\ \ldots,\ g^{s_A^d}
+$$
+
+They publish this updated CRS and then **delete** $s_A$:
+
+$$
+(g^{s_A^i}, g^{\alpha_A}, g^{s_A^i \alpha_A})
+$$
+
+#### Round 2: second participant
+
+Participant B samples their own secret $s_B$ and $\alpha_B$. They receive the CRS from participant A and raise each element to the power of $s_B$ and $\alpha_B$:
+
+$$
+\left(g^{s_A^i}\right)^{s_B^i} = g^{(s_A s_B)^i} \quad \text{for each } i
+$$
+
+, 
+
+$$
+\left((g^{\alpha_A})^{\alpha_B}\right) = g^{\alpha_A \alpha_B}
+$$
+
+, and 
+
+$$
+\left((g^{s_A^i \alpha_A})^{s_B^i \alpha_B}\right) = g^{\alpha_A \alpha_B (s_A s_B)^i}
+$$
+
+and publishes the resulting two-party A-B CRS:
+
+$$
+(g^{s_{AB}^i}, g^{\alpha_{AB}}, g^{\alpha_{AB}s_{AB}^i})
+$$
+
+#### Round 3: last participant
+
+In the third round, participant C samples their own $s_C$ and $\alpha_C$. They receive the CRS from participant B and raise each element to the power of $s_C$ and $\alpha_C$.
+
+$$
+((g^{s_{AB}^i})^{s_C^i}, (g^{\alpha_{AB}})^{\alpha_C}, (g^{\alpha_{AB}s_{AB}^i})^{\alpha_C s_C^i})
+$$
+
+resulting in the three-party CRS:
+
+$$
+(g^{s_{ABC}^i}, g^{\alpha_{ABC}}, g^{\alpha_{ABC}s_{ABC}^i})
+$$
+
+
+No participant ever knew $s_{ABC}$ and $\alpha_{ABC}$ — each only knew their own $s_i$ and $\alpha_i$. The combined secret $s_{ABC}$ and $\alpha_{ABC}$ was never held by anyone in its entirety. As long as one participant faithfully deleted their $s_i$, the full $s_{ABC}$ and $\alpha_{ABC}$ are computationally unrecoverable.
+
+Note: This process can be repeated for as many participants as necessary.
+
+### Worked Example: Three-Party Ceremony<a name="worked-example-two-party-ceremony"></a>
+
+Let us make this concrete using our familiar parameters: $g = 2$, modulus $p = 101$.
+To keep the arithmetic manageable we show powers $i = 0$ and $i = 1$ only; the same procedure extends to all higher powers.
+
+The three participants and their secret contributions are:
+
+| Participant | $s$ | $\alpha$ |
+|---|---|---|
+| Alice | $s_A = 3$ | $\alpha_A = 2$ |
+| Bob | $s_B = 5$ | $\alpha_B = 4$ |
+| Charlie | $s_C = 2$ | $\alpha_C = 3$ |
+
+Combined secrets (nobody holds these in full): $s = 3 \cdot 5 \cdot 2 = 30$, $\alpha = 2 \cdot 4 \cdot 3 = 24$.
+
+---
+
+**Round 1 — Alice ($s_A = 3$, $\alpha_A = 2$)**
+
+Alice starts from the generator $g = 2$ and computes all three CRS components:
+
+$$
+\begin{aligned}
+g^{s_A^0} &= 2^1  = 2, \qquad g^{s_A^1} = 2^3  = 8 \\
+g^{\alpha_A}              &= 2^2  = 4 \\
+g^{\alpha_A s_A^0} &= 2^{2}  = 4, \quad\ g^{\alpha_A s_A^1} = 2^{6}  = 64 \\
+\end{aligned}
+$$
+
+Alice publishes $\bigl((2,\ 8),\; g^\alpha = 4,\; (4,\ 64)\bigr)$ and destroys $s_A = 3$ and $\alpha_A = 2$.
+
+---
+
+**Round 2 — Bob ($s_B = 5$, $\alpha_B = 4$)**
+
+Bob raises each component to the matching power of his own secrets:
+
+$$
+\begin{aligned}
+\bigl(g^{s_A^0}\bigr)^{s_B^0} &= 2^1 = 2 \\
+\bigl(g^{s_A^1}\bigr)^{s_B^1} &= 8^5 = 2^{15} \equiv 44 \ (\text{mod}\ 101) \\[6pt]
+\bigl(g^{\alpha_A}\bigr)^{\alpha_B} &= 4^4 = 2^{8} \equiv 54 \ (\text{mod}\ 101) \\[6pt]
+\bigl(g^{\alpha_A s_A^0}\bigr)^{\alpha_B s_B^0} &= 4^{4}  = 2^{8} \equiv 54 \ (\text{mod}\ 101) \\
+\bigl(g^{\alpha_A s_A^1}\bigr)^{\alpha_B s_B^1} &= 64^{20} = 2^{120} \equiv 2^{20} \equiv 95 \ (\text{mod}\ 101) \\
+\end{aligned}
+$$
+
+Bob publishes $\bigl((2,\ 44),\; g^\alpha = 54,\; (54,\ 95)\bigr)$ and destroys $s_B = 5$ and $\alpha_B = 4$.
+
+---
+
+**Round 3 — Charlie ($s_C = 2$, $\alpha_C = 3$)**
+
+Charlie raises each component to the matching power of his own secrets:
+
+$$
+\begin{aligned}
+\bigl(g^{s_{AB}^0}\bigr)^{s_C^0} &= 2^1  = 2 \\
+\bigl(g^{s_{AB}^1}\bigr)^{s_C^1} &= 44^{2} = 2^{30} \equiv 17 \ (\text{mod}\ 101) \\[6pt]
+\bigl(g^{\alpha_{AB}}\bigr)^{\alpha_C} &= 54^{3} = 2^{24} \equiv 5 \ (\text{mod}\ 101) \\[6pt]
+\bigl(g^{\alpha_{AB} s_{AB}^0}\bigr)^{\alpha_C s_C^0} &= 54^{3}  = 2^{24} \equiv 5 \ (\text{mod}\ 101) \\
+\bigl(g^{\alpha_{AB} s_{AB}^1}\bigr)^{\alpha_C s_C^1} &= 95^{6}  = 2^{120} \equiv 2^{20} \equiv 95 \ (\text{mod}\ 101) \\
+\end{aligned}
+$$
+
+Charlie publishes $\bigl((2,\ 17),\; g^\alpha = 5,\; (5,\ 95)\bigr)$ and destroys $s_C = 2$ and $\alpha_C = 3$.
+
+---
+
+**Verification**
+
+The final CRS encodes the combined secrets $s = 30$ and $\alpha = 24$.
+We can confirm without knowing $s$ or $\alpha$ directly:
+
+$$
+\begin{aligned}
+g^s      &= 2^{30} \equiv 17 \ (\text{mod}\ 101) \checkmark \\
+g^\alpha &= 2^{24} \equiv 5  \ (\text{mod}\ 101) \checkmark \\
+g^{\alpha s^1} &= 2^{24 \cdot 30} = 2^{720} \equiv 2^{20} \equiv 95 \ (\text{mod}\ 101) \checkmark \\
+\end{aligned}
+$$
+
+Nobody — Alice, Bob, Charlie, or any observer — knows that $s = 30$ or $\alpha = 24$. Each participant only ever held their own $s_i$ and $\alpha_i$, both of which were deleted after contributing. As long as any one of the three deleted honestly, the combined toxic waste is unrecoverable.
+
+### Verifying Each Contribution<a name="verifying-each-contribution"></a>
+
+Publishing an updated CRS is not enough on its own — a malicious participant could fabricate the values rather than honestly building on top of the previous participant's work. Two distinct problems must be solved.
+
+#### Problem 1: Internal consistency of each published CRS
+
+Even if a participant is honest, an observer needs to verify that the published encoded powers all come from the *same* secret $s$ and $\alpha$. A dishonest participant could use a different secret for each power index.
+
+The fix uses two pairing checks applied to every participant's published CRS:
+
+**Check 1 — Powers of $s$ are self-consistent.** For each power $i \in \{2, \ldots, d\}$, verify that the $i$-th encoded power is the correct continuation of the 1st:
+
+$$
+e\!\left(g^{s^i},\ g\right) \stackrel{?}{=} e\!\left(g^{s^1},\ g^{s^{i-1}}\right)
+$$
+
+Both sides equal $e(g,g)^{s^i}$, so the check passes if and only if the same $s$ was used for every power.
+
+**Check 2 — The $\alpha$-shift is consistent with each power of $s$.** For each power $i \in [d]$:
+
+$$
+e\!\left(g^{s^i},\ g^{\alpha}\right) \stackrel{?}{=} e\!\left(g^{\alpha s^i},\ g\right)
+$$
+
+Both sides equal $e(g,g)^{\alpha s^i}$. This ensures the $\alpha$-shifted values are derived from the same $\alpha$ and $s$ used for the plain powers.
+
+#### Problem 2: The last-participant attack
+
+The checks above verify that each participant's published CRS is internally consistent, but they do **not** prevent a participant from ignoring all previous work and simply generating a fresh, valid CRS from scratch. A last participant who does this becomes the sole holder of all secrets — exactly the single-trusted-party problem we were trying to escape.
+
+**The fix:** every participant except the first must additionally publish their own individual encrypted secrets:
+
+$$
+\left.\left( g^{s_k^i},\ g^{\alpha_k},\ g^{\alpha_k s_k^i} \right)\right|_{i \in [d]}
+$$
+
+This allows anyone to verify that the composite CRS produced by participant $k$ is a proper multiplicative extension of the previous CRS — not something fabricated from scratch. Three cross-participant pairing checks are performed for each power $i \in [d]$:
+
+$$
+\begin{aligned}
+e\!\left(g^{s_{\text{new}}^i},\ g\right) &\stackrel{?}{=} e\!\left(g^{s_{\text{prev}}^i},\ g^{s_k^i}\right) \\[4pt]
+e\!\left(g^{\alpha_{\text{new}}},\ g\right) &\stackrel{?}{=} e\!\left(g^{\alpha_{\text{prev}}},\ g^{\alpha_k}\right) \\[4pt]
+e\!\left(g^{\alpha_{\text{new}} s_{\text{new}}^i},\ g\right) &\stackrel{?}{=} e\!\left(g^{\alpha_{\text{prev}} s_{\text{prev}}^i},\ g^{\alpha_k s_k^i}\right)
+\end{aligned}
+$$
+
+Each check confirms that the new composite value is the previous value raised to the participant's own secret — without anyone learning what that secret is.
+
+#### Worked example: verifying Bob's contribution
+
+Continuing with our three-party ceremony. Bob's own individual encrypted secrets for power $i=1$ are:
+
+$$
+g^{s_B^1} = 2^5 \equiv 32 \ (\text{mod}\ 101), \qquad
+g^{\alpha_B} = 2^4 \equiv 16 \ (\text{mod}\ 101), \qquad
+g^{\alpha_B s_B^1} = 2^{20} \equiv 95 \ (\text{mod}\ 101)
+$$
+
+Alice's (previous) CRS for $i=1$ was:
+
+$$
+g^{s_A^1} = 8, \qquad g^{\alpha_A} = 4, \qquad g^{\alpha_A s_A^1} = 64
+$$
+
+Bob's composite (new) CRS for $i=1$ is:
+
+$$
+g^{s_{AB}^1} = 44, \qquad g^{\alpha_{AB}} = 54, \qquad g^{\alpha_{AB} s_{AB}^1} = 95
+$$
+
+**Cross-participant checks (using abstract pairing notation $e(g^a, g^b) = e(g,g)^{ab}$):**
+
+The pairing check compares exponents inside $e(g,g)^{(\cdot)}$. Because $g^x$ encodes the discrete log $x$, each side of a check is $e(g,g)$ raised to a product of those discrete logs. The concrete group elements from our ceremony are:
+
+| Value | Group element | Discrete log (exponent of $g=2$) |
+|---|---|---|
+| $g^{s_A^1}$ | $8$ | $3$ |
+| $g^{s_B^1}$ | $32$ | $5$ |
+| $g^{s_{AB}^1}$ | $44$ | $15 = 3 \cdot 5$ |
+| $g^{\alpha_A}$ | $4$ | $2$ |
+| $g^{\alpha_B}$ | $16$ | $4$ |
+| $g^{\alpha_{AB}}$ | $54$ | $8 = 2 \cdot 4$ |
+| $g^{\alpha_A s_A^1}$ | $64$ | $6 = 2 \cdot 3$ |
+| $g^{\alpha_B s_B^1}$ | $95$ | $20 = 4 \cdot 5$ |
+| $g^{\alpha_{AB} s_{AB}^1}$ | $95$ | $120 = 8 \cdot 15$ |
+
+> **Note:** In our $p = 101$ toy group, $2^{120} \equiv 2^{120 \bmod 100} = 2^{20} \equiv 95 \ (\text{mod}\ 101)$ since the multiplicative order of $2$ modulo $101$ is $100$. A real pairing-friendly curve uses a much larger prime-order group; the toy example is only here to show the structure.
+
+**Check 1 — $s$ was extended correctly** ($e$ both sides in terms of their discrete logs):
+
+$$
+e\!\left(g^{s_{AB}^1},\ g\right) \stackrel{?}{=} e\!\left(g^{s_A^1},\ g^{s_B^1}\right)
+$$
+
+$$
+e(g,g)^{15} \stackrel{?}{=} e(g,g)^{3 \cdot 5} = e(g,g)^{15} \quad \checkmark
+$$
+
+**Check 2 — $\alpha$ was extended correctly:**
+
+$$
+e\!\left(g^{\alpha_{AB}},\ g\right) \stackrel{?}{=} e\!\left(g^{\alpha_A},\ g^{\alpha_B}\right)
+$$
+
+$$
+e(g,g)^{8} \stackrel{?}{=} e(g,g)^{2 \cdot 4} = e(g,g)^{8} \quad \checkmark
+$$
+
+**Check 3 — the $\alpha$-shifted power was extended correctly:**
+
+$$
+e\!\left(g^{\alpha_{AB} s_{AB}^1},\ g\right) \stackrel{?}{=} e\!\left(g^{\alpha_A s_A^1},\ g^{\alpha_B s_B^1}\right)
+$$
+
+$$
+e(g,g)^{120} \stackrel{?}{=} e(g,g)^{6 \cdot 20} = e(g,g)^{120} \quad \checkmark
+$$
+
+All three checks pass. Bob cannot fabricate values that satisfy all of them without actually knowing Alice's CRS and applying his own consistent $s_B$ and $\alpha_B$ to it — that is the guarantee KEA provides.
+
+The same three checks are then applied to Charlie's contribution, using Bob's composite CRS as the "previous" input.
+
+### The 1-of-n Trust Model<a name="the-1-of-n-trust-model"></a>
+
+The security guarantee of this ceremony is expressed as a **1-of-n trust assumption**:
+
+> The CRS is secure if at least one of the $n$ participants honestly deleted their secret contribution.
+
+This is a dramatically weaker trust requirement than relying on a single party. Compare:
+
+| Setup | Trust Requirement |
+|---|---|
+| Single trusted party | Must trust that one specific person is honest |
+| MPC ceremony with $n$ participants | Only need **one** of the $n$ to be honest |
+
+If the ceremony has 1000 participants drawn from independent communities, jurisdictions, and organisations, an adversary would need to compromise all 1000 of them simultaneously to forge a proof. That is considered computationally and socially infeasible at sufficient scale.
+
+This is why large zk-SNARK deployments invest heavily in running widely-participated ceremonies.
+
+
+### Real-World Ceremonies<a name="real-world-ceremonies"></a>
+
+The theory above has been put into practice for major zk-SNARK deployments:
+
+**Zcash Sapling (2018).** Zcash ran a six-participant ceremony to generate the CRS for their Sapling upgrade. The participants were geographically dispersed and used air-gapped machines. The ceremony was designed so that every participant's hardware was destroyed after their contribution, providing strong evidence of secret deletion. As long as one of the six deleted their secrets, the CRS is sound.
+
+**Powers of Tau.** A community-run, open-ended ceremony where anyone can contribute a round. Having thousands of participants from all over the world makes the 1-of-n assumption extremely robust in practice. This has been used as a starting point for multiple circuits and protocols.
+
+**Ethereum KZG Ceremony (2023).** Before the EIP-4844 (proto-danksharding) upgrade, Ethereum ran a large-scale public ceremony to generate the KZG trusted setup. Over 140,000 participants contributed, making it the largest MPC ceremony ever run. The ceremony was open to anyone: participants could use a web interface, a CLI tool, or a hardware wallet. The diversity and scale of participation provides strong social and cryptographic guarantees.
+
+### Remaining Limitation: Circuit-Specific Setup<a name="remaining-limitation-circuit-specific-setup"></a>
+
+One important caveat: in many SNARK constructions (notably Groth16), the Trusted Setup is **circuit-specific**. The CRS is generated for a particular computation (circuit), not for arbitrary programs. If you change the circuit — even slightly — you need to run a new ceremony.
+
+This is one of the main motivations behind newer proof systems such as **PLONK** and **STARKs**:
+
+- **PLONK** uses a *universal* trusted setup: one ceremony generates a CRS that can be used for any circuit up to a certain size.
+- **STARKs** eliminate the trusted setup entirely, relying on collision-resistant hash functions instead of discrete-log hardness. The trade-off is larger proof sizes.
+
+The evolution from circuit-specific setups → universal setups → no setup at all represents a major thread of progress in the zk-SNARK research landscape.
+
+#### Summary<a name="summary"></a>
+
+Let's recap everything we have built:
+
+| Property | Achieved? | How |
+|---|---|---|
+| Soundness | ✅ | Encrypted evaluation at hidden point $s$; KEA enforces degree |
+| Zero-Knowledge | ✅ | Random blinding factor $\delta$ hides the concrete proof values |
+| Non-Interactive | ✅ | Trusted Setup publishes a CRS; pairings let anyone verify |
+| Setup trustworthiness | ✅ | MPC ceremony with $n$ parties; secure as long as one is honest |
+
+Together these four properties give us a fully functional zk-SNARK: a proof that is small, fast to verify, reveals nothing about the prover's secret, requires no interaction after setup, and whose setup cannot be subverted by any single party.
+
+
+
