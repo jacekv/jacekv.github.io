@@ -47,6 +47,11 @@ myself, I want to share what I've learned about how these
             6. [Real-World Ceremonies](#real-world-ceremonies)
             7. [Remaining Limitation: Circuit-Specific Setup](#remaining-limitation-circuit-specific-setup)
         9. [Summary](#summary)
+3. [Succinct Non-Interactive Argument of Knowledge of Polynomial](#succinct-non-interactive-argument-of-knowledge-of-polynomial)
+    1. [Setup](#setup)
+    2. [Proving](#proving)
+    3. [Verification](#verification)
+    4. [Conclusions](#conclusions)
 
 
 ## What is a zk-SNARK?<a name="what-is-a-zk-snark"></a>
@@ -1718,6 +1723,72 @@ Let's recap everything we have built:
 | Setup trustworthiness | ✅ | MPC ceremony with $n$ parties; secure as long as one is honest |
 
 Together these four properties give us a fully functional zk-SNARK: a proof that is small, fast to verify, reveals nothing about the prover's secret, requires no interaction after setup, and whose setup cannot be subverted by any single party.
+
+## Succinct Non-Interactive Argument of Knowledge of Polynomial<a name="succinct-non-interactive-argument-of-knowledge-of-polynomial"></a>
+
+We are now ready to state the complete protocol formally. Both parties have agreed on the target polynomial $t(x)$ and the maximum degree $d$ of the prover's polynomial.
+
+### Setup
+
+A trusted party (or MPC ceremony) samples random values $s$ and $\alpha$, computes the encrypted powers and their $\alpha$-shifts, then publishes two keys and destroys the raw secrets.
+
+**Proving key** — used by the prover to construct a proof:
+
+$$
+\left( g^{s^i} \right)_{i \in \{0,\ldots,d\}}, \quad \left( g^{\alpha s^i} \right)_{i \in \{0,\ldots,d\}}
+$$
+
+**Verification key** — used by the verifier to check a proof:
+
+$$
+g^{\alpha}, \quad g^{t(s)}
+$$
+
+### Proving
+
+The prover knows the coefficients $\{c_i\}_{i \in \{0,\ldots,d\}}$ of the polynomial:
+
+$$
+p(x) = c_d x^d + \cdots + c_1 x^1 + c_0 x^0
+$$
+
+1. Compute the quotient polynomial $h(x) = p(x) / t(x)$.
+2. Evaluate the encrypted polynomial $g^{p(s)}$ and the encrypted quotient $g^{h(s)}$ using the proving key powers $\left(g^{s^i}\right)$.
+3. Evaluate the $\alpha$-shifted polynomial $g^{\alpha p(s)}$ using the $\alpha$-shifted proving key powers $\left(g^{\alpha s^i}\right)$.
+4. Sample a fresh random blinding factor $\delta$.
+5. Publish the randomised proof:
+
+$$
+\pi = \left( g^{\delta p(s)},\; g^{\delta h(s)},\; g^{\delta \alpha p(s)} \right)
+$$
+
+### Verification
+
+Parse the proof as $(g^p,\; g^h,\; g^{p'})$ and perform two pairing checks:
+
+**Check 1 — Polynomial restriction** (the prover used the CRS powers, not arbitrary values):
+
+$$
+e\!\left(g^{p'},\; g\right) \stackrel{?}{=} e\!\left(g^p,\; g^{\alpha}\right)
+$$
+
+Both sides equal $e(g,g)^{\delta \alpha p(s)}$, so this passes iff $g^{p'}$ is the correctly $\alpha$-shifted version of $g^p$.
+
+**Check 2 — Polynomial cofactors** ($p(x)$ is divisible by $t(x)$):
+
+$$
+e\!\left(g^p,\; g\right) \stackrel{?}{=} e\!\left(g^{t(s)},\; g^h\right)
+$$
+
+Both sides equal $e(g,g)^{\delta p(s)}$ and $e(g,g)^{\delta t(s) h(s)}$ respectively, so this passes iff $p(s) = t(s) \cdot h(s)$.
+
+If both checks pass, the verifier is convinced that the prover knows a polynomial $p(x)$ of degree at most $d$ that is divisible by $t(x)$ — without learning anything about $p(x)$ itself.
+
+> **Remark.** Why can't the prover just set $g^{p'} = e(g^p, g^\alpha)$ to fake check 1? Because the output of a pairing lives in the target group $G_T$, not in $G_1$ or $G_2$. The verification check 1 expects $g^{p'} \in G_1$, so a $G_T$ element cannot be substituted in. This is the essential reason why pairing outputs cannot be reused as inputs to further pairings.
+
+### Conclusions
+
+We have arrived at a zero-knowledge succinct non-interactive argument of knowledge for the polynomial problem. While this is a niche use-case on its own — a prover can always construct a valid $p(x)$ by multiplying $t(x)$ by any bounded polynomial — the construction is the crucial building block for the general-purpose zk-SNARKs described in the next chapter, where the polynomial encodes an arbitrary computation.
 
 
 
